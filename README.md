@@ -12,7 +12,7 @@ To fully understand Ripper, you need a reference for each event type and its ass
 
 ## Events
 
-### `BEGIN` {#BEGIN}
+### `BEGIN`
 
 `BEGIN` is a parser event that represents the use of the `BEGIN` keyword, which hooks into the lifecycle of the interpreter. Whatever is inside the block will get executed when the program starts. The syntax looks like the following:
 
@@ -161,9 +161,40 @@ The handler for this event accepts one parameter, which is either an `args_add`,
 def on_arg_paren(args); end
 ```
 
+### `args_add`
+
+`args_add` is a parser event that represents a single argument inside a list of arguments to any method call or an array. It accepts as arguments the previous `args_add` or `args_new` node as well as a value which can be anything that could be passed as an argument.
+
+For example, in the following snippet:
+
+```ruby
+method(first, second, third)
+```
+
+you would first receive an event for `args_new`. Then for each subsequent argument, you would receive an event for `args_add`, with the following arguments:
+
+* The result of `args_new` and the `vcall` node for `first`
+* The result of the first `args_add` call and the `vcall` node for `second`
+* The result of the second `args_add` call and the `vcall` node for `third`
+
+Note that because of the nature of the chaining here, it's not possible to know if you're on the last argument to a list without further inspecting the source through the scanner events.
+
+```ruby
+def on_args_add(args, arg); end
+```
+
+### `args_add_block`
+
+`args_add_block` is a parser event that represents a list of arguments and potentially a block argument. If no block is passed, then the second argument will be the literal `false`. `args_add_block` is commonly seen being passed to any method where you use parentheses (wrapped in an `arg_paren` node). It's also used to pass arguments to the various control-flow keywords like `return`.
+
+The handler for this event accepts the arguments (as an `args_add` node or `args_add_star` node) and the optional block (which is either a `brace_block` or `do_block` node, or `false` if it's not passed).
+
+```ruby
+def on_args_add_block(args, block); end
+```
+
+
 <!--
-export type Args = ParserEvent<"args", { body: AnyNode[] }>;
-export type ArgsAddBlock = ParserEvent<"args_add_block", { body: [Args | ArgsAddStar, false | AnyNode] }>;
 export type ArgsAddStar = ParserEvent<"args_add_star", { body: [Args | ArgsAddStar, ...AnyNode[]] }>;
 export type ArgsForward = ParserEvent0<"args_forward">;
 export type Array = ParserEvent<"array", { body: [null | Args | ArgsAddStar | Qsymbols | Qwords | Symbols | Words] }>;
@@ -283,35 +314,6 @@ type ParenAroundParams = Omit<Paren, "body"> & { body: [Params] };
 -->
 
 <!--
-  # args_add is a parser event that represents a single argument inside a list
-  # of arguments to any method call or an array. It accepts as arguments the
-  # parent args node as well as an arg which can be anything that could be
-  # passed as an argument.
-  def on_args_add(args, arg)
-    if args[:body].empty?
-      # If this is the first argument being passed into the list of arguments,
-      # then we're going to use the bounds of the argument to override the
-      # parent node's location since this will be more accurate.
-      arg.merge(type: :args, body: [arg])
-    else
-      args.merge!(body: args[:body] << arg, el: arg[:el], ec: arg[:ec])
-    end
-  end
-
-  # args_add_block is a parser event that represents a list of arguments and
-  # potentially a block argument. If no block is passed, then the second
-  # argument will be the literal false.
-  def on_args_add_block(args, block)
-    ending = block || args
-
-    args.merge(
-      type: :args_add_block,
-      body: [args, block],
-      el: ending[:el],
-      ec: ending[:ec]
-    )
-  end
-
   # args_add_star is a parser event that represents adding a splat of values
   # to a list of arguments. If accepts as arguments the parent args node as
   # well as the part that is being splatted.
