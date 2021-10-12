@@ -18,7 +18,6 @@ To fully understand Ripper, you need a reference for each event type and its ass
 
 ```ruby
 BEGIN {
-  # execute stuff here
 }
 ```
 
@@ -48,7 +47,6 @@ def on_CHAR(value); end
 
 ```ruby
 END {
-  # execute stuff here
 }
 ```
 
@@ -116,7 +114,7 @@ def on_aref(collection, index); end
 `aref_field` nodes are for assigning values into collections at specific indices. Put another way, it's any time you're calling the method `#[]=`. The `aref_field` node itself is just the left side of the assignment, and they're always wrapped in `assign` nodes. As an example:
 
 ```ruby
-foo[]
+collection[]
 ```
 
 The nodes always contain two children, the expression that corresponds to the collection being indexed and the index itself. The collection is any primary Ruby expression. The index can optionally be omitted (in the very rare case that someone defines a `#[]=` method that accepts no arguments).
@@ -187,16 +185,77 @@ def on_args_add(args, arg); end
 
 `args_add_block` is a parser event that represents a list of arguments and potentially a block argument. If no block is passed, then the second argument will be the literal `false`. `args_add_block` is commonly seen being passed to any method where you use parentheses (wrapped in an `arg_paren` node). It's also used to pass arguments to the various control-flow keywords like `return`.
 
-The handler for this event accepts the arguments (as an `args_add` node or `args_add_star` node) and the optional block (which is either a `brace_block` or `do_block` node, or `false` if it's not passed).
+For example, in the following snippet, the `&block` would trigger the `args_add_block` to have a `vcall` node as its second argument:
+
+```ruby
+method(argument, &block)
+```
+
+whereas in the following snippet, you would have an `args_add_block` node with `false` as the block:
+
+```ruby
+method(argument)
+```
+
+The handler for this event accepts the arguments (as an `args_new`, `args_add`, or `args_add_star` node) and the optional block (which is usually a `vcall` node, or `false` if it's not passed).
 
 ```ruby
 def on_args_add_block(args, block); end
 ```
 
+### `args_add_star`
+
+`args_add_star` is a parser event that represents adding a splat of values to a list of arguments. For example, in the following snippet, the `*arguments` would trigger an `args_add_star` event:
+
+```ruby
+method(prefix, *arguments, suffix)
+```
+
+This event is very similar to the `args_add` event except that whatever expression is being used as an argument is prefixed with the splat operator. The handlers for this event accepts two arguments: the parent arguments node as well as the expression that is being splatted.
+
+```ruby
+def on_args_add_star(args, arg); end
+```
+
+### `args_forward`
+
+`args_forward` is a parser event that represents forwarding all kinds of arguments onto another method call. For example, in the following snippet:
+
+```ruby
+def request(method, path, **headers, &block); end
+
+def get(...)
+  request(:GET, ...)
+end
+
+def post(...)
+  request(:POST, ...)
+end
+```
+
+both the `get` and `post` methods are forwarding all of their arguments (positional, keyword, and block) on to the `request` method. The `args_forward` node appears in both the caller (the `request` method calls) and the callee (the `get` and `post` definitions).
+
+The handler for this event accepts no arguments. It is passed up to the parent argument node (be it an `args_add` or `args_add_block` node).
+
+```ruby
+def on_args_forward; end
+```
+
+### `args_new`
+
+`args_new` is a parser event that represents the beginning of a list of arguments to any method call or an array. It can be followed by any number of `args_add`, `args_add_block`, or `args_forward` events, which end up in a chain. For example, in the following snippet:
+
+```ruby
+method(argument)
+```
+
+there will be one `args_add` node that contains as its first child an `args_new` node and its second child a `vcall` node for the argument. The handlers for this event accepts no arguments. It is passed up to the parent argument node (be it an `args_add` or `args_add_block` node).
+
+```ruby
+def on_args_new; end
+```
 
 <!--
-export type ArgsAddStar = ParserEvent<"args_add_star", { body: [Args | ArgsAddStar, ...AnyNode[]] }>;
-export type ArgsForward = ParserEvent0<"args_forward">;
 export type Array = ParserEvent<"array", { body: [null | Args | ArgsAddStar | Qsymbols | Qwords | Symbols | Words] }>;
 export type Aryptn = ParserEvent<"aryptn", { body: [null | VarRef, AnyNode[], null | VarField, null | AnyNode[]] }>;
 export type Assign = ParserEvent<"assign", { body: [Assignable, AnyNode] }>;
@@ -314,43 +373,6 @@ type ParenAroundParams = Omit<Paren, "body"> & { body: [Params] };
 -->
 
 <!--
-  # args_add_star is a parser event that represents adding a splat of values
-  # to a list of arguments. If accepts as arguments the parent args node as
-  # well as the part that is being splatted.
-  def on_args_add_star(args, part)
-    beging = find_scanner_event(:@op, '*')
-    ending = part || beging
-
-    {
-      type: :args_add_star,
-      body: [args, part],
-      sl: beging[:sl],
-      sc: beging[:sc],
-      el: ending[:el],
-      ec: ending[:ec]
-    }
-  end
-
-  # args_forward is a parser event that represents forwarding all kinds of
-  # arguments onto another method call.
-  def on_args_forward
-    find_scanner_event(:@op, '...').merge!(type: :args_forward)
-  end
-
-  # args_new is a parser event that represents the beginning of a list of
-  # arguments to any method call or an array. It can be followed by any
-  # number of args_add events, which we'll append onto an array body.
-  def on_args_new
-    {
-      type: :args,
-      body: [],
-      sl: lineno,
-      sc: char_pos,
-      el: lineno,
-      ec: char_pos
-    }
-  end
-
   # Array nodes can contain a myriad of subnodes because of the special
   # array literal syntax like %w and %i. As a result, we may be looking for
   # an left bracket, or we may be just looking at the children to get the
