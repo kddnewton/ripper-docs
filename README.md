@@ -10,6 +10,87 @@ To fully understand Ripper, you need a reference for each event type and its ass
 * An example of the syntax that would trigger the event.
 * How you would go about writing a handler method for this event, and the types of objects that would be passed in as arguments to that handler.
 
+## Patterns
+
+There are certain patterns that you will find in the various Ripper events that make it slightly easier to work with.
+
+### Lists
+
+Certain nodes come in as a list of events that get chained together in clumps. Those include:
+
+* `args_new`/`args_add`/`args_add_block`/`args_add_star`/`args_forward` - argument lists
+* `mlhs_new`/`mlhs_add` - left-hand side of a multiple assignment list
+* `mrhs_new`/`mrhs_add` - right-hand side of a multiple assignment list
+* `qsymbols_new`/`qsymbols_add` - `%i` array literal parts
+* `qwords_new`/`qwords_add` - `%w` array literal parts
+* `regexp_new`/`regexp_add` - regular expression literal parts
+* `stmts_new`/`stmts_add` - statement lists
+* `string_content`/`string_add` - string literal parts
+* `symbols_new`/`symbols_add` - `%I` array literal parts
+* `word_new`/`word_add` - word parts within a `%W` array literal
+* `words_new`/`words_add` - `%W` array literal parts
+* `xstring_new`/`xstring_add` - `%x` command string literal parts
+
+Each of these groups of events represents a potentially infinite list of syntax. Because parser generators don't usually support that kind of construct, each sequential piece is added in turn. That means that parser generator looks something like:
+
+```c
+qsym_list	:
+  /* none */
+    { $$ = dispatch0(qsymbols_new); }
+  | qsym_list tSTRING_CONTENT ' '
+    { $$ = dispatch2(qsymbols_add, $1, $2) };
+```
+
+So when you go to parse the source `%i[one two three]` you're going to get, in order:
+
+* `qsymbols_new` with no arguments
+* `qsymbols_add` with the result of the first call and a `tstring_content` containing the value `one`
+* `qsymbols_add` with the result of the second call and a `tstring_content` containing the value `two`
+* `qsymbols_add` with the result of the third call and a `tstring_content` containing the value `three`
+
+Finally, the result of the last method call is going to be passed up to the `array` event handler.
+
+In a lot of libraries that use Ripper you will see this handled by the `*_new` methods creating an array and the `*_add` methods adding onto that array. This results in a flatter syntax tree, which can be easier to use depending on the context. You can see this pattern used in `Ripper::SexpBuilderPP`, which ships with Ruby [here](https://github.com/ruby/ruby/blob/38d255d023373a665ce0d2622ed6e25462653a2a/ext/ripper/lib/ripper/sexp.rb#L178-L184).
+
+### Statements
+
+Certain nodes function as wrappers around lists of statements (`stmts_add`/`stmts_new` nodes). Fortunately, they are all handled in the same way for each node type, which makes them simpler to work with if you're going to be iterating through statement lists (for instance in a formatter or a static analyzer). The nodes that wrap statements are:
+
+* `BEGIN` - the only argument
+* `END` - the only argument
+* `bodystmt` - the first argument
+* `brace_block` - the second argument after the optional block variables
+* `else` - the only argument
+* `elsif` - the second argument, after the predicate
+* `ensure` - the only argument
+* `for` - the third argument, after the block variable and the collection
+* `if` - the second argument, after the predicate
+* `in` - the second argument, after the left-hand side
+* `lambda` - the second argument if you're using a brace block (if you're using a do block it's a `bodystmt` node because you can attach rescue handlers)
+* `program` - the only argument (this is the top-level list of statements)
+* `rescue` - the second argument, after the rescued error
+* `string_embexpr` - the first argument representing the interpolated statements
+* `unless` - the second argument, after the predicate
+* `until` - the second argument, after the predicate
+* `when` - the second argument, after the case declaration
+* `while` - the second argument, after the predicate
+
+### Naming
+
+Certain nodes are named similarly which can indicate similar functionality.
+
+A couple of common prefixes you will find in the list of events include:
+
+* `assoc*` - having to do with the contents of a hash. This includes `assoc_new` (a key/value pair in a hash), `assoc_splat` (a splatted expression in a hash), and `assoclist_from_args` (the node that wraps a list of the `assoc_*` nodes inside a hash).
+* `def*` - having to do with defining methods. This includes `def` (a regular method definition), `defs` (a singleton-class method definition), and `defsl` (a single-line method definition).
+* `m*` - mostly nodes that relate to mass assignment. This includes `massign` (the overall parent node), `mlhs` (the left-hand side (LHS) of a mass assignment), `mlhs_add_post` (LHS of a mass assignment nodes that are after a splat), `mlhs_add_star` (LHS of a mass assign nodes that are splatted), `mlhs_paren` (parentheses used in the LHS of a mass assign node, usually for destructuring), `mrhs` (the right-hand side (RHS) of a mass assignment), `mrhs_add_star` (RHS of a mass assignment that is being splatted), and `mrhs_new_from_args` (creating an `mrhs` node from a list of arguments, as in a list of rescued exceptions).
+
+While a couple of common suffixes you will find in the list of events include:
+
+* `*field` - anything that can be assigned to. This includes `aref_field` (assigning using `#[]=`), `const_path_field` (assigning to a nested constant), `field` (assigning to a value on an expression), `top_const_field` (assigning to a top-level constant), and `var_field` (a regular identifier being used in an assignment).
+* `*_mod` - the modifier form of some keyword. This includes `if_mod`, `rescue_mod`, `unless_mod`, `until_mod`, and `while_mod`. Each of the prefixes of those event names tells you which keyword is being used.
+* `*ptn` - patterns used in pattern matching. This includes `aryptn` (array patterns), `fndptn` (find patterns), and `hshptn` (hash patterns).
+
 ## Events
 
 ### `BEGIN`
