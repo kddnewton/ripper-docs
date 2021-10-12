@@ -75,7 +75,7 @@ def on___end__(value); end
 alias aliased_name name
 ```
 
-Now, in the current context you can call `aliased_name` and it will execute the `name` method. When you're aliasing two methods, you can either provide bare words (like the example above) or you can provide symbols (note that this includes dynamic symbols like `:"left-#{middle}-right"`). You can also optionally use parentheses with this keyword.
+Now, in the current context you can call `aliased_name` and it will execute the `name` method. When you're aliasing two methods, you can either provide bare words (like the example above) or you can provide symbols (note that this includes dynamic symbols like `:"left-#{middle}-right"`).
 
 The handler for this event accepts two parameters, that correspond to the first and second arguments to the keyword. So, for the above example the left would be the symbol literal `aliased_name` and the right could be the symbol literal `name`. Either argument can be a `dyna_symbol` node or a `symbol_literal` node.
 
@@ -117,8 +117,43 @@ The nodes always contain two children, the expression that corresponds to the co
 def on_aref_field(collection, index); end
 ```
 
+### `arg_ambiguous`
+
+`arg_ambiguous` is a parser event that represents when the parser sees an argument as ambiguous. For example, in the following snippet:
+
+```ruby
+value //
+```
+
+the question becomes if the forward slash is being used as a division operation or if it's the start of a regular expression.
+
+Unlike most other parser events, the output of the handler method for this event is not passed up to any parent nodes, as it is not a node in the resulting tree. As such, it does not matter what value is returned from the handler method. The handler accepts one parameter that is a string representing the ambiguous argument. In the above example, it would be `"/"`.
+
+```ruby
+def on_arg_ambiguous(value); end
+```
+
+### `arg_paren`
+
+`arg_paren` is a parser event that represents wrapping arguments to a method inside a set of parentheses. For example, in the follow snippet:
+
+```ruby
+method(argument)
+```
+
+there would be an `arg_paren` node around the `args_add_block` node that represents the set of arguments being sent to the `method` method. The argument child node can be `nil` if no arguments were passed, as in:
+
+```ruby
+method()
+```
+
+The handler for this event accepts one parameter, which is either an `args_add`, `args_add_block`, or `args_forward` node. It can also optionally be `nil`.
+
+```ruby
+def on_arg_paren(args); end
+```
+
 <!--
-export type ArgParen = ParserEvent<"arg_paren", { body: [Args | ArgsAddBlock | ArgsForward | null] }>;
 export type Args = ParserEvent<"args", { body: AnyNode[] }>;
 export type ArgsAddBlock = ParserEvent<"args_add_block", { body: [Args | ArgsAddStar, false | AnyNode] }>;
 export type ArgsAddStar = ParserEvent<"args_add_star", { body: [Args | ArgsAddStar, ...AnyNode[]] }>;
@@ -240,50 +275,6 @@ type ParenAroundParams = Omit<Paren, "body"> & { body: [Params] };
 -->
 
 <!--
-  # arg_ambiguous is a parser event that represents when the parser sees an
-  # argument as ambiguous. For example, in the following snippet:
-  #
-  #     foo //
-  #
-  # the question becomes if the forward slash is being used as a division
-  # operation or if it's the start of a regular expression. We don't need to
-  # track this event in the AST that we're generating, so we're not going to
-  # define an explicit handler for it.
-  #
-  #     def on_arg_ambiguous(value)
-  #       value
-  #     end
-
-  # arg_paren is a parser event that represents wrapping arguments to a method
-  # inside a set of parentheses. For example, in the follow snippet:
-  #
-  #     foo(bar)
-  #
-  # there would be an arg_paren node around the args_add_block node that
-  # represents the set of arguments being sent to the foo method. The args child
-  # node can be nil if no arguments were passed, as in:
-  #
-  #     foo()
-  #
-  def on_arg_paren(args)
-    beging = find_scanner_event(:@lparen)
-    rparen = find_scanner_event(:@rparen)
-
-    # If the arguments exceed the ending of the parentheses, then we know we
-    # have a heredoc in the arguments, and we need to use the bounds of the
-    # arguments to determine how large the arg_paren is.
-    ending = (args && args[:el] > rparen[:el]) ? args : rparen
-
-    {
-      type: :arg_paren,
-      body: [args],
-      sl: beging[:sl],
-      sc: beging[:sc],
-      el: ending[:el],
-      ec: ending[:ec]
-    }
-  end
-
   # args_add is a parser event that represents a single argument inside a list
   # of arguments to any method call or an array. It accepts as arguments the
   # parent args node as well as an arg which can be anything that could be
