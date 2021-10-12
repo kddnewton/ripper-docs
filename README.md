@@ -1,6 +1,14 @@
 # Ripper
 
-Documentation for the ripper Ruby standard library.
+Ripper is a Ruby standard library that acts as an event-based Ruby script parser. It can be used to gather static information about Ruby scripts and/or to generate syntax trees from source code.
+
+Ripper works by hooking into the `parse.y` parser generator with comments. When Ripper is being generated at compile-time, it uses those comments to build its own parser generator, which is then run through `bison` to get its own parser. When any production rule is reduced, it calls out to a `_dispatchN` method (where `N` is 1 through 7). Those methods in turn pass their result up the tree as it is built.
+
+To fully understand Ripper, you need a reference for each event type and its associated handler method. That reference is provided below. In each event type section you will find the following information:
+
+* Whether it is a "parser" event or a "scanner" event. In general, parser events are inner nodes in the tree while scanner events are leaf nodes in the tree. Specifically, things like identifiers, constants, operators, and the like are scanner events, while higher-level nodes like assignment, conditionals, and loops are parser events.
+* An example of the syntax that would trigger the event.
+* How you would go about writing a handler method for this event, and the types of objects that would be passed in as arguments to that handler.
 
 ## Events
 
