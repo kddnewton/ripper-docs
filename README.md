@@ -4,7 +4,7 @@ Documentation for the ripper Ruby standard library.
 
 ## Events
 
-### `BEGIN`
+### `BEGIN` {#BEGIN}
 
 `BEGIN` is a parser event that represents the use of the `BEGIN` keyword, which hooks into the lifecycle of the interpreter. Whatever is inside the block will get executed when the program starts. The syntax looks like the following:
 
