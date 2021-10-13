@@ -18,11 +18,11 @@ If you'd like to see the syntax tree that Ripper generates for Ruby code, you ca
 Noahs-MBP-2:ripper-docs noah$ irb
 2.7.1 :001 > require "ripper"
  => false
-2.7.1 :006 > Ripper.sexp_raw("a=7")
+2.7.1 :002 > Ripper.sexp_raw("a=7")
  => [:program, [:stmts_add, [:stmts_new], [:assign, [:var_field, [:@ident, "a", [1, 0]]], [:@int, "7", [1, 2]]]]]
-2.7.1 :007 > Ripper.lex("a=7")
+2.7.1 :003 > Ripper.lex("a=7")
  => [[[1, 0], :on_ident, "a", CMDARG], [[1, 1], :on_op, "=", BEG], [[1, 2], :on_int, "7", END]]
-2.7.1 :008 > Ripper.sexp("a=7")
+2.7.1 :004 > Ripper.sexp("a=7")
  => [:program, [[:assign, [:var_field, [:@ident, "a", [1, 0]]], [:@int, "7", [1, 2]]]]]
 ```
 
@@ -42,7 +42,43 @@ There are patterns in the various Ripper events that make it slightly easier to 
 
 ### Lists
 
-Certain nodes come in as a list of events that get chained together in clumps. Those include:
+Often your Ruby code will contain a variable-length list of items, like parameters to a method call, or items in an array, or statements inside a block. Ripper doesn't use variable-length events. Instead, every event has a fixed number of items.
+
+In order to keep the number of parameters fixed, Ripper often creates an empty item and then adds to it. For instance, here is how array literals are parsed by Ripper:
+
+```ruby
+2.7.1 :004 > pp Ripper.sexp_raw("[1, 2, 3, 4, 5]")
+[:program,
+ [:stmts_add,
+  [:stmts_new],
+  [:array,
+   [:args_add,
+    [:args_add,
+     [:args_add,
+      [:args_add,
+       [:args_add, [:args_new], [:@int, "1", [1, 1]]],
+       [:@int, "2", [1, 4]]],
+      [:@int, "3", [1, 7]]],
+     [:@int, "4", [1, 10]]],
+    [:@int, "5", [1, 13]]]]]]
+```
+
+Notice that `[:args_new]` has no additional parameters, and the other array elements are added one at a time using `args_add`.
+
+One of the differences between `sexp` and `sexp_raw` is that it collapses some of these chains of calls into an N-element list:
+
+```ruby
+2.7.1 :005 > pp Ripper.sexp("[1, 2, 3, 4, 5]")
+[:program,
+ [[:array,
+   [[:@int, "1", [1, 1]],
+    [:@int, "2", [1, 4]],
+    [:@int, "3", [1, 7]],
+    [:@int, "4", [1, 10]],
+    [:@int, "5", [1, 13]]]]]]
+```
+
+The `args_new`/`args_add` events are used for a list of call parameters. But they aren't the only similar set of events. Events used in similar ways include:
 
 * `args_new`/`args_add`/`args_add_block`/`args_add_star`/`args_forward` - argument lists
 * `mlhs_new`/`mlhs_add` - left-hand side of a multiple assignment list
@@ -57,7 +93,7 @@ Certain nodes come in as a list of events that get chained together in clumps. T
 * `words_new`/`words_add` - `%W` array literal parts
 * `xstring_new`/`xstring_add` - `%x` command string literal parts
 
-Each of these groups of events represents a potentially infinite list of syntax. Because parser generators don't usually support that kind of construct, each sequential piece is added in turn. That means that parser generator looks something like:
+Each of these groups of events represents a potentially infinite N-ary list of syntax. Because parser generators don't usually support that kind of construct, each sequential piece is added in turn. So the parser generator code looks something like:
 
 ```c
 qsym_list	:
@@ -67,16 +103,22 @@ qsym_list	:
     { $$ = dispatch2(qsymbols_add, $1, $2) };
 ```
 
-So when you go to parse the source `%i[one two three]` you're going to get, in order:
+Other events, such as `qsymbols_new`/`qsymbols_add` work very much like `args_new`/`args_add`, and this \_new/\_add naming convention is common. Here's what qsymbols new/add looks like in sexp:
 
-* `qsymbols_new` with no arguments
-* `qsymbols_add` with the result of the first call and a `tstring_content` containing the value `one`
-* `qsymbols_add` with the result of the second call and a `tstring_content` containing the value `two`
-* `qsymbols_add` with the result of the third call and a `tstring_content` containing the value `three`
+```ruby
+2.7.1 :006 > pp Ripper.sexp_raw("%i[one two three]")
+[:program,
+ [:stmts_add,
+  [:stmts_new],
+  [:array,
+   [:qsymbols_add,
+    [:qsymbols_add,
+     [:qsymbols_add, [:qsymbols_new], [:@tstring_content, "one", [1, 3]]],
+     [:@tstring_content, "two", [1, 7]]],
+    [:@tstring_content, "three", [1, 11]]]]]]
+```
 
-Finally, the result of the last method call is going to be passed up to the `array` event handler.
-
-In a lot of libraries that use Ripper you will see this handled by the `*_new` methods creating an array and the `*_add` methods adding onto that array. This results in a flatter syntax tree, which can be easier to use depending on the context. You can see this pattern used in `Ripper::SexpBuilderPP`, which ships with Ruby [here](https://github.com/ruby/ruby/blob/38d255d023373a665ce0d2622ed6e25462653a2a/ext/ripper/lib/ripper/sexp.rb#L178-L184).
+When using Ripper, this is often handled by the `*_new` methods creating an array and the `*_add` methods appending to that array. This results in a flatter syntax tree, similar to what sexp produces. You can see this pattern used in `Ripper::SexpBuilderPP`, which ships with Ruby [here](https://github.com/ruby/ruby/blob/38d255d023373a665ce0d2622ed6e25462653a2a/ext/ripper/lib/ripper/sexp.rb#L178-L184).
 
 ### Statements
 
