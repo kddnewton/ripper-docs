@@ -254,7 +254,7 @@ alias aliased_name name
 
 Now, in the current context you can call `aliased_name` and it will execute the `name` method. When you're aliasing two methods, you can either provide bare words (like the example above) or you can provide symbols (note that this includes dynamic symbols like `:"left-#{middle}-right"`).
 
-The handler for this event accepts two parameters, that correspond to the first and second arguments to the keyword. So, for the above example the left would be the symbol literal `aliased_name` and the right could be the symbol literal `name`. Either argument can be a `dyna_symbol` node or a `symbol_literal` node.
+The handler for this event accepts two parameters, that correspond to the first and second arguments to the keyword. So, for the above example the left would be the symbol literal `aliased_name` and the right could be the symbol literal `name`. Either argument can be a [dyna_symbol](#dyna_symbol) node or a [symbol_literal](#symbol_literal) node.
 
 ```ruby
 def on_alias(left, right); end
@@ -274,7 +274,7 @@ The nodes usually contains two children, the collection and the index. In some c
 collection[]
 ```
 
-Because the left-hand side of this expression can be any primary Ruby expression, its type is not known. The right-hand side (if provided) will be either an `args_add` node or an `args_add_block` node.
+Because the left-hand side of this expression can be any primary Ruby expression, its type is not known. The right-hand side (if provided) will be either an [args_add](#args_add) node or an [args_add_block](#args_add_block) node.
 
 ```ruby
 def on_aref(collection, index); end
@@ -282,7 +282,7 @@ def on_aref(collection, index); end
 
 ### `aref_field`
 
-`aref_field` nodes are for assigning values into collections at specific indices. Put another way, it's any time you're calling the method `#[]=`. The `aref_field` node itself is just the left side of the assignment, and they're always wrapped in `assign` nodes. As an example:
+`aref_field` nodes are for assigning values into collections at specific indices. Put another way, it's any time you're calling the method `#[]=`. The `aref_field` node itself is just the left side of the assignment, and they're always wrapped in [assign](#assign) nodes. As an example:
 
 ```ruby
 collection[index] = value
@@ -318,13 +318,13 @@ def on_arg_ambiguous(value); end
 method(argument)
 ```
 
-there would be an `arg_paren` node around the `args_add_block` node that represents the set of arguments being sent to the `method` method. The argument child node can be `nil` if no arguments were passed, as in:
+there would be an `arg_paren` node around the [args_add_block](#args_add_block) node that represents the set of arguments being sent to the `method` method. The argument child node can be `nil` if no arguments were passed, as in:
 
 ```ruby
 method()
 ```
 
-The handler for this event accepts one parameter, which is either an `args_add`, `args_add_block`, or `args_forward` node. It can also optionally be `nil`.
+The handler for this event accepts one parameter, which is either an [args_add](#args_add), [args_add_block](#args_add_block), or [args_forward](#args_forward) node. It can also optionally be `nil`.
 
 ```ruby
 def on_arg_paren(args); end
@@ -332,7 +332,7 @@ def on_arg_paren(args); end
 
 ### `args_add`
 
-`args_add` is a parser event that represents a single argument inside a list of arguments to any method call or an array. It accepts as arguments the previous `args_add` or `args_new` node as well as a value which can be anything that could be passed as an argument.
+`args_add` is a parser event that represents a single argument inside a list of arguments to any method call or an array. It accepts as arguments the previous `args_add` or [args_new](#args_new) node as well as a value which can be anything that could be passed as an argument.
 
 For example, in the following snippet:
 
@@ -340,11 +340,11 @@ For example, in the following snippet:
 method(first, second, third)
 ```
 
-you would first receive an event for `args_new`. Then for each subsequent argument, you would receive an event for `args_add`, with the following arguments:
+you would first receive an event for [args_new](#args_new). Then for each subsequent argument, you would receive an event for `args_add`, with the following arguments:
 
-* The result of `args_new` and the `vcall` node for `first`
-* The result of the first `args_add` call and the `vcall` node for `second`
-* The result of the second `args_add` call and the `vcall` node for `third`
+* The result of [args_new](#args_new) and the [vcall](#vcall) node for `first`
+* The result of the first `args_add` call and the [vcall](#vcall) node for `second`
+* The result of the second `args_add` call and the [vcall](#vcall) node for `third`
 
 Note that because of the nature of the chaining here, it's not possible to know if you're on the last argument to a list without further inspecting the source through the scanner events.
 
@@ -354,9 +354,9 @@ def on_args_add(args, arg); end
 
 ### `args_add_block`
 
-`args_add_block` is a parser event that represents a list of arguments and potentially a block argument. If no block is passed, then the second argument will be the literal `false`. `args_add_block` is commonly seen being passed to any method where you use parentheses (wrapped in an `arg_paren` node). It's also used to pass arguments to the various control-flow keywords like `return`.
+`args_add_block` is a parser event that represents a list of arguments and potentially a block argument. If no block is passed, then the second argument will be the literal `false`. `args_add_block` is commonly seen being passed to any method where you use parentheses (wrapped in an [arg_paren](#arg_paren) node). It's also used to pass arguments to the various control-flow keywords like `return`.
 
-For example, in the following snippet, the `&block` would trigger the `args_add_block` to have a `vcall` node as its second argument:
+For example, in the following snippet, the `&block` would trigger the `args_add_block` to have a [vcall](#vcall) node as its second argument:
 
 ```ruby
 method(argument, &block)
@@ -368,7 +368,7 @@ whereas in the following snippet, you would have an `args_add_block` node with `
 method(argument)
 ```
 
-The handler for this event accepts the arguments (as an `args_new`, `args_add`, or `args_add_star` node) and the optional block (which is usually a `vcall` node, or `false` if it's not passed).
+The handler for this event accepts the arguments (as an [args_new](#args_new), [args_add](#args_add), or [args_add_star](#args_add_star) node) and the optional block (which is usually a [vcall](#vcall) node, or `false` if it's not passed).
 
 ```ruby
 def on_args_add_block(args, block); end
@@ -382,7 +382,7 @@ def on_args_add_block(args, block); end
 method(prefix, *arguments, suffix)
 ```
 
-This event is very similar to the `args_add` event except that whatever expression is being used as an argument is prefixed with the splat operator. The handlers for this event accepts two arguments: the parent arguments node as well as the expression that is being splatted.
+This event is very similar to the [args_add](#args_add) event except that whatever expression is being used as an argument is prefixed with the splat operator. The handlers for this event accepts two arguments: the parent arguments node as well as the expression that is being splatted.
 
 ```ruby
 def on_args_add_star(args, arg); end
@@ -406,7 +406,7 @@ end
 
 both the `get` and `post` methods are forwarding all of their arguments (positional, keyword, and block) on to the `request` method. The `args_forward` node appears in both the caller (the `request` method calls) and the callee (the `get` and `post` definitions).
 
-The handler for this event accepts no arguments. It is passed up to the parent argument node (be it an `args_add` or `args_add_block` node).
+The handler for this event accepts no arguments. It is passed up to the parent argument node (be it an [args_add](#args_add) or [args_add_block](#args_add_block) node).
 
 ```ruby
 def on_args_forward; end
@@ -414,13 +414,13 @@ def on_args_forward; end
 
 ### `args_new`
 
-`args_new` is a parser event that represents the beginning of a list of arguments to any method call or an array. It can be followed by any number of `args_add`, `args_add_block`, or `args_forward` events, which end up in a chain. For example, in the following snippet:
+`args_new` is a parser event that represents the beginning of a list of arguments to any method call or an array. It can be followed by any number of [args_add](#args_add), [args_add_block](#args_add_block), or [args_forward](#args_forward) events, which end up in a chain. For example, in the following snippet:
 
 ```ruby
 method(argument)
 ```
 
-there will be one `args_add` node that contains as its first child an `args_new` node and its second child a `vcall` node for the argument. The handlers for this event accepts no arguments. It is passed up to the parent argument node (be it an `args_add` or `args_add_block` node).
+there will be one [args_add](#args_add) node that contains as its first child an `args_new` node and its second child a [vcall](#vcall) node for the argument. The handlers for this event accepts no arguments. It is passed up to the parent argument node (be it an [args_add](#args_add) or [args_add_block](#args_add_block) node).
 
 ```ruby
 def on_args_new; end
