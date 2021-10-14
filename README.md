@@ -63,7 +63,7 @@ In order to keep the number of parameters fixed, Ripper often creates an empty i
 
 Notice that `[:args_new]` has no additional parameters, and the other array elements are added one at a time using `args_add`.
 
-One of the differences between `sexp` and `sexp_raw` is that it collapses some of these chains of calls into an N-element list:
+One of the differences between `::sexp` and `::sexp_raw` is that it collapses some of these chains of calls into an N-element list:
 
 ```ruby
 2.7.1 :005 > pp Ripper.sexp("[1, 2, 3, 4, 5]")
@@ -76,20 +76,20 @@ One of the differences between `sexp` and `sexp_raw` is that it collapses some o
     [:@int, "5", [1, 13]]]]]]
 ```
 
-The `args_new`/`args_add` events are used for a list of call parameters. But they aren't the only similar set of events. Events used in similar ways include:
+The [args_new](#args_new)/[args_add](#args_add) events are used for a list of call parameters. But they aren't the only similar set of events. Events used in similar ways include:
 
-* `args_new`/`args_add`/`args_add_block`/`args_add_star`/`args_forward` - argument lists
-* `mlhs_new`/`mlhs_add` - left-hand side of a multiple assignment list
-* `mrhs_new`/`mrhs_add` - right-hand side of a multiple assignment list
-* `qsymbols_new`/`qsymbols_add` - `%i` array literal parts
-* `qwords_new`/`qwords_add` - `%w` array literal parts
-* `regexp_new`/`regexp_add` - regular expression literal parts
-* `stmts_new`/`stmts_add` - statement lists
-* `string_content`/`string_add` - string literal parts
-* `symbols_new`/`symbols_add` - `%I` array literal parts
-* `word_new`/`word_add` - word parts within a `%W` array literal
-* `words_new`/`words_add` - `%W` array literal parts
-* `xstring_new`/`xstring_add` - `%x` command string literal parts
+* [args_new](#args_new)/[args_add](#args_add)/[args_add_block](#args_add_block)/[args_add_star](#args_add_star)/[args_forward](#args_forward) - argument lists
+* [mlhs_new](#mlhs_new)/[mlhs_add](#mlhs_add) - left-hand side of a multiple assignment list
+* [mrhs_new](#mrhs_new)/[mrhs_add](#mrhs_add) - right-hand side of a multiple assignment list
+* [qsymbols_new](#qsymbols_new)/[qsymbols_add](#qsymbols_add) - `%i` array literal parts
+* [qwords_new](#qwords_new)/[qwords_add](#qwords_add) - `%w` array literal parts
+* [regexp_new](#regexp_new)/[regexp_add](#regexp_add) - regular expression literal parts
+* [stmts_new](#stmts_new)/[stmts_add](#stmts_add) - statement lists
+* [string_content](#string_content)/[string_add](#string_add) - string literal parts
+* [symbols_new](#symbols_new)/[symbols_add](#symbols_add) - `%I` array literal parts
+* [word_new](#word_new)/[word_add](#word_add) - word parts within a `%W` array literal
+* [words_new](#words_new)/[words_add](#words_add) - `%W` array literal parts
+* [xstring_new](#xstring_new)/[xstring_add](#xstring_add) - `%x` command string literal parts
 
 Each of these groups of events represents a potentially infinite N-ary list of syntax. Because parser generators don't usually support that kind of construct, each sequential piece is added in turn. So the parser generator code looks something like:
 
@@ -101,7 +101,7 @@ qsym_list	:
     { $$ = dispatch2(qsymbols_add, $1, $2) };
 ```
 
-Other events, such as `qsymbols_new`/`qsymbols_add` work very much like `args_new`/`args_add`, and this \_new/\_add naming convention is common. Here's what qsymbols new/add looks like in sexp:
+Other events, such as [qsymbols_new](#qsymbols_new)/[qsymbols_add](#qsymbols_add) work very much like [args_new](#args_new)/[args_add](#args_add), and this \_new/\_add naming convention is common. Here's what qsymbols new/add looks like in `::sexp_raw`:
 
 ```ruby
 2.7.1 :006 > pp Ripper.sexp_raw("%i[one two three]")
@@ -122,24 +122,24 @@ When using Ripper, this is often handled by the `*_new` methods creating an arra
 
 Certain nodes function as wrappers around lists of statements (`stmts_add`/`stmts_new` nodes). Fortunately, they are all handled in the same way for each node type, which makes them simpler to work with if you're going to be iterating through statement lists (for instance in a formatter or a static analyzer). The nodes that wrap statements are:
 
-* `BEGIN` - the only argument
-* `END` - the only argument
-* `bodystmt` - the first argument
-* `brace_block` - the second argument after the optional block variables
-* `else` - the only argument
-* `elsif` - the second argument, after the predicate
-* `ensure` - the only argument
-* `for` - the third argument, after the block variable and the collection
-* `if` - the second argument, after the predicate
-* `in` - the second argument, after the left-hand side
-* `lambda` - the second argument if you're using a brace block (if you're using a do block it's a `bodystmt` node because you can attach rescue handlers)
-* `program` - the only argument (this is the top-level list of statements)
-* `rescue` - the second argument, after the rescued error
-* `string_embexpr` - the first argument representing the interpolated statements
-* `unless` - the second argument, after the predicate
-* `until` - the second argument, after the predicate
-* `when` - the second argument, after the case declaration
-* `while` - the second argument, after the predicate
+* [BEGIN](#BEGIN) - the only argument
+* [END](#END) - the only argument
+* [bodystmt](#bodystmt) - the first argument
+* [brace_block](#brace_block) - the second argument after the optional block variables
+* [else](#else) - the only argument
+* [elsif](#elsif) - the second argument, after the predicate
+* [ensure](#ensure) - the only argument
+* [for](#for) - the third argument, after the block variable and the collection
+* [if](#if) - the second argument, after the predicate
+* [in](#in) - the second argument, after the left-hand side
+* [lambda](#lambda) - the second argument if you're using a brace block (if you're using a do block it's a [bodystmt](#bodystmt) node because you can attach rescue handlers)
+* [program](#program) - the only argument (this is the top-level list of statements)
+* [rescue](#rescue) - the second argument, after the rescued error
+* [string_embexpr](#string_embexpr) - the first argument representing the interpolated statements
+* [unless](#unless) - the second argument, after the predicate
+* [until](#until) - the second argument, after the predicate
+* [when](#when) - the second argument, after the case declaration
+* [while](#while) - the second argument, after the predicate
 
 ### Naming
 
@@ -147,15 +147,15 @@ Certain nodes are named similarly which can indicate similar functionality.
 
 A couple of common prefixes you will find in the list of events include:
 
-* `assoc*` - having to do with the contents of a hash. This includes `assoc_new` (a key/value pair in a hash), `assoc_splat` (a splatted expression in a hash), and `assoclist_from_args` (the node that wraps a list of the `assoc_*` nodes inside a hash).
-* `def*` - having to do with defining methods. This includes `def` (a regular method definition), `defs` (a singleton-class method definition), and `defsl` (a single-line method definition).
-* `m*` - mostly nodes that relate to mass assignment. This includes `massign` (the overall parent node), `mlhs` (the left-hand side (LHS) of a mass assignment), `mlhs_add_post` (LHS of a mass assignment nodes that are after a splat), `mlhs_add_star` (LHS of a mass assign nodes that are splatted), `mlhs_paren` (parentheses used in the LHS of a mass assign node, usually for destructuring), `mrhs` (the right-hand side (RHS) of a mass assignment), `mrhs_add_star` (RHS of a mass assignment that is being splatted), and `mrhs_new_from_args` (creating an `mrhs` node from a list of arguments, as in a list of rescued exceptions).
+* `assoc*` - having to do with the contents of a hash. This includes [assoc_new](#assoc_new) (a key/value pair in a hash), [assoc_splat](#assoc_splat) (a splatted expression in a hash), and [assoclist_from_args](#assoclist_from_args) (the node that wraps a list of the `assoc_*` nodes inside a hash).
+* `def*` - having to do with defining methods. This includes [def](#def) (a regular method definition), [defs](#defs) (a singleton-class method definition), and [defsl](#defsl) (a single-line method definition).
+* `m*` - mostly nodes that relate to mass assignment. This includes [massign](#massign) (the overall parent node), [mlhs](#mlhs) (the left-hand side (LHS) of a mass assignment), [mlhs_add_post](#mlhs_add_post) (LHS of a mass assignment nodes that are after a splat), [mlhs_add_star](#mlhs_add_star) (LHS of a mass assign nodes that are splatted), [mlhs_paren](#mlhs_paren) (parentheses used in the LHS of a mass assign node, usually for destructuring), [mrhs](#mrhs) (the right-hand side (RHS) of a mass assignment), [mrhs_add_star](#mrhs_add_star) (RHS of a mass assignment that is being splatted), and [mrhs_new_from_args](#mrhs_new_from_args) (creating an [mrhs](#mrhs) node from a list of arguments, as in a list of rescued exceptions).
 
 While a couple of common suffixes you will find in the list of events include:
 
-* `*field` - anything that can be assigned to. This includes `aref_field` (assigning using `#[]=`), `const_path_field` (assigning to a nested constant), `field` (assigning to a value on an expression), `top_const_field` (assigning to a top-level constant), and `var_field` (a regular identifier being used in an assignment).
-* `*_mod` - the modifier form of some keyword. This includes `if_mod`, `rescue_mod`, `unless_mod`, `until_mod`, and `while_mod`. Each of the prefixes of those event names tells you which keyword is being used.
-* `*ptn` - patterns used in pattern matching. This includes `aryptn` (array patterns), `fndptn` (find patterns), and `hshptn` (hash patterns).
+* `*field` - anything that can be assigned to. This includes [aref_field](#aref_field) (assigning using `#[]=`), [const_path_field](#const_path_field) (assigning to a nested constant), [field](#field) (assigning to a value on an expression), [top_const_field](#top_const_field) (assigning to a top-level constant), and [var_field](#var_field) (a regular identifier being used in an assignment).
+* `*_mod` - the modifier form of some keyword. This includes [if_mod](#if_mod), [rescue_mod](#rescue_mod), [unless_mod](#unless_mod), [until_mod](#until_mod), and [while_mod](#while_mod). Each of the prefixes of those event names tells you which keyword is being used.
+* `*ptn` - patterns used in pattern matching. This includes [aryptn](#aryptn) (array patterns), [fndptn](#fndptn) (find patterns), and [hshptn](#hshptn) (hash patterns).
 
 ### Location
 
@@ -175,11 +175,11 @@ If you're handling a parser event, then `lineno` will be the line number that th
 
 If you're handling a scanner event, then `column` will always be the byte offset in the line that the token appears on _before_ the token itself. So for example, if you're parsing `1 + 2`, then in the [int](#int) scanner event handler for the `2` in that statement, `column` will have a value of `4`.
 
-If you're handling a parser event, the `column` will be the byte offset that the parser is looking at when the production rule that you're referencing is reduced. This can be especially confusing when you factor in comments. Let's say you're parsing `1 + 2 # 3`. Both of the [int](#int) scanner events will have the expected column values (`0` and `4`), whereas the `binary` node that represents that addition will have a `column` value of `9` (because that is the point at which the parser reduced the `binary`).
+If you're handling a parser event, the `column` will be the byte offset that the parser is looking at when the production rule that you're referencing is reduced. This can be especially confusing when you factor in comments. Let's say you're parsing `1 + 2 # 3`. Both of the [int](#int) scanner events will have the expected column values (`0` and `4`), whereas the [binary](#binary) node that represents that addition will have a `column` value of `9` (because that is the point at which the parser reduced the [binary](#binary)).
 
 It's important here to note the difference between offset and byte offset. If you're parsing a string of source like `party = "🎉"`, the overall [assign](#assign) node that represents this assignment will have a `column` value of `14` (5 for the variable, 3 for the spaces and operator, 2 for quotes, and 4 bytes to represent the emoji). Note that this is also encoding-specific, as different encodings will represents codepoints with differing numbers of bytes.
 
-For these reasons, it's easiest to rely on location information from the scanner events for determining the bounds of parser events. For example, if you're handling a `while` event, you can look for the `while` and `end` keywords to know the bounds of your node.
+For these reasons, it's easiest to rely on location information from the scanner events for determining the bounds of parser events. For example, if you're handling a [while](#while) event, you can look for the `while` and `end` keywords to know the bounds of your node.
 
 ## Events
 
@@ -285,7 +285,7 @@ def on_aref(collection, index); end
 `aref_field` nodes are for assigning values into collections at specific indices. Put another way, it's any time you're calling the method `#[]=`. The `aref_field` node itself is just the left side of the assignment, and they're always wrapped in `assign` nodes. As an example:
 
 ```ruby
-collection[]
+collection[index] = value
 ```
 
 The nodes always contain two children, the expression that corresponds to the collection being indexed and the index itself. The collection is any primary Ruby expression. The index can optionally be omitted (in the very rare case that someone defines a `#[]=` method that accepts no arguments).
@@ -426,11 +426,82 @@ there will be one `args_add` node that contains as its first child an `args_new`
 def on_args_new; end
 ```
 
+### `array`
+
+`array` is a parser event that contains myriad child nodes because of the special array literal syntax like `%w` and `%i`. For example, the following lines all produce an `array` event:
+
+```ruby
+[]
+[one, two, three]
+[*one_two_three]
+%w[one two three]
+%i[one two three]
+%W[one two three]
+%I[one two three]
+```
+
+In order, the child node types coming in would be `nil`, [args](#args), [args_add_star](#args_add_star), [qwords](#qwords), [qsymbols](#qsymbols), [words](#words), and [symbols](#symbols). The handler for this event should account for those various types.
+
+```ruby
+def on_array(contents); end
+```
+
+### `aryptn`
+
+`aryptn` is a parser event that represents matching against an array pattern using the Ruby `2.7`+ pattern matching syntax. It's one of the more complicated events, because the four parameters that it accepts can almost all be `nil`. First, let's look at what kind of code triggers this event:
+
+```ruby
+case [1, 2, 3]
+in [Integer, Integer]
+  "matched"
+in Container[Integer, Integer]
+  "matched"
+in [Integer, *, Integer]
+  "matched"
+end
+```
+
+An `aryptn` event triggers with four parameters: an optional constant wrapper, an array of positional matches, an optional splat with identifier, and an optional array of positional matches that occur after the splat. All of the `in` clauses above would trigger an `aryptn` event.
+
+In the first clause, the first parameter would be `nil` because it's not being wrapped with a constant. The second parameter would be an array of nodes representing the two positional matches. The third parameter would be `nil` because there's no splat operator, and the fourth parameter would be `nil` for the same reason.
+
+In the second clause, the first parameter would be a [const](#const) node containing the `Container` name, and the rest of the parameters would be the same as in the first clause.
+
+The final clause would have a `nil` constant, a single-element array containing the first `Integer` match for the second parameter, a [var_field](#var_field) node containing the splat for the third parameter, and another single-element array containing the final `Integer` match for the fourth parameter.
+
+```ruby
+def on_aryptn(const, preargs, splatarg, postargs); end
+```
+
+### `assign`
+
+`assign` is a parser event that represents assigning something to a variable or constant. Generally, the left side of the assignment is going to be any node that ends with the name `field` (see [naming](#naming)).
+
+```ruby
+variable = value
+```
+
+It accepts as arguments the left side of the expression before the equals sign and the right side of the expression. The right side of the expression can be any of most of the nodes in the tree.
+
+```ruby
+def on_assign(left, right); end
+```
+
+### `assoc_new`
+
+`assoc_new` is a parser event that contains a key-value pair within a hash. It is a child event of either an [assoclist_from_args](#assoclist_from_args) or a [bare_assoc_hash](#bare_assoc_hash).
+
+```ruby
+{ key1: value1, key2: value2 }
+```
+
+In the above example, the would be two `assoc_new` nodes. Each would contain a key ([label](#label) nodes) and a value ([vcall](#vcall) nodes).
+
+```ruby
+def on_assoc_new(key, value); end
+```
+
 <!--
-export type Array = ParserEvent<"array", { body: [null | Args | ArgsAddStar | Qsymbols | Qwords | Symbols | Words] }>;
-export type Aryptn = ParserEvent<"aryptn", { body: [null | VarRef, AnyNode[], null | VarField, null | AnyNode[]] }>;
-export type Assign = ParserEvent<"assign", { body: [Assignable, AnyNode] }>;
-export type AssocNew = ParserEvent<"assoc_new", { body: [AnyNode, AnyNode] }>;
 export type AssocSplat = ParserEvent<"assoc_splat", { body: [AnyNode] }>;
 export type AssoclistFromArgs = ParserEvent<"assoclist_from_args", { body: HashContent[] }>;
 export type BareAssocHash = ParserEvent<"bare_assoc_hash", { body: HashContent[] }>;
@@ -544,77 +615,6 @@ type ParenAroundParams = Omit<Paren, "body"> & { body: [Params] };
 -->
 
 <!--
-  # Array nodes can contain a myriad of subnodes because of the special
-  # array literal syntax like %w and %i. As a result, we may be looking for
-  # an left bracket, or we may be just looking at the children to get the
-  # bounds.
-  def on_array(contents)
-    if !contents || %i[args args_add_star].include?(contents[:type])
-      beging = find_scanner_event(:@lbracket)
-      ending = find_scanner_event(:@rbracket)
-
-      {
-        type: :array,
-        body: [contents],
-        sl: beging[:sl],
-        sc: beging[:sc],
-        el: ending[:el],
-        ec: ending[:ec]
-      }
-    else
-      ending = find_scanner_event(:@tstring_end)
-      contents[:ec] = ending[:ec]
-
-      ending.merge!(
-        type: :array,
-        body: [contents],
-        sl: contents[:sl],
-        sc: contents[:sc]
-      )
-    end
-  end
-
-  # aryptn is a parser event that represents matching against an array pattern
-  # using the Ruby 2.7+ pattern matching syntax.
-  def on_aryptn(const, preargs, splatarg, postargs)
-    pieces = [const, *preargs, splatarg, *postargs].compact
-
-    {
-      type: :aryptn,
-      body: [const, preargs, splatarg, postargs],
-      sl: pieces[0][:sl],
-      sc: pieces[0][:sc],
-      el: pieces[-1][:el],
-      ec: pieces[-1][:ec]
-    }
-  end
-
-  # assign is a parser event that represents assigning something to a
-  # variable or constant. It accepts as arguments the left side of the
-  # expression before the equals sign and the right side of the expression.
-  def on_assign(left, right)
-    left.merge(
-      type: :assign,
-      body: [left, right],
-      el: right[:el],
-      ec: right[:ec]
-    )
-  end
-
-  # assoc_new is a parser event that contains a key-value pair within a
-  # hash. It is a child event of either an assoclist_from_args or a
-  # bare_assoc_hash.
-  def on_assoc_new(key, value)
-    {
-      type: :assoc_new,
-      body: [key, value],
-      sl: key[:sl],
-      sc: key[:sc],
-      el: value[:el],
-      ec: value[:ec]
-    }
-  end
-
   # assoc_splat is a parser event that represents splatting a value into a
   # hash (either a hash literal or a bare hash in a method call).
   def on_assoc_splat(contents)
