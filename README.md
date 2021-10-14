@@ -515,9 +515,63 @@ Much like `assoc_new`, these nodes get added into an array that gets sent up to 
 def on_assoc_splat(contents); end
 ```
 
+### `assoclist_from_args`
+
+`assoclist_from_args` is a parser event that represents the key-value pairs of a hash literal. Its parent node is always a hash.
+
+```ruby
+{ key1: value1, key2: value2 }
+```
+
+The handler for this event accepts a single parameter: an array containing either [assoc_new](#assoc_new) or [assoc_splat](#assoc_splat) nodes.
+
+```ruby
+def on_assoclist_from_args(assocs); end
+```
+
+### `backref`
+
+`backref` is a scanner event that represents a global variable referencing a matched value. It comes in the form of a $ followed by a positive integer.
+
+```ruby
+$1
+```
+
+The handler accepts a single string parameter containing the value as seen in the source.
+
+```ruby
+def on_backref(value); end
+```
+
+### `backtick`
+
+`backtick` is a scanner event that represents the use of the ` operator. It's usually found being used for an [xstring_literal](#xstring_literal), but could also be found as the name of a method being defined.
+
+```ruby
+`ls`
+```
+
+The above example would trigger two `backtick` events. The handler accepts a single string parameter that always contains a single backtick.
+
+```ruby
+def on_backtick(value); end
+```
+
+### `bare_assoc_hash`
+
+`bare_assoc_hash` is a parser event that represents a hash of contents being passed as a method argument (and therefore has omitted braces). It's very similar to an [assoclist_from_args](#assoclist_from_args) event.
+
+```ruby
+method(key1: value1, key2: value2)
+```
+
+In the above example, the event would be triggered for the source bound between the `key1` [label](#label) and the `value2` [vcall](#vcall). The handler for this event accepts a single array parameter of assoc events (either [assoc_new](#assoc_new) or [assoc_splat](#assoc_splat)).
+
+```ruby
+def on_bare_assoc_hash(assocs); end
+```
+
 <!--
-export type AssoclistFromArgs = ParserEvent<"assoclist_from_args", { body: HashContent[] }>;
-export type BareAssocHash = ParserEvent<"bare_assoc_hash", { body: HashContent[] }>;
 export type Begin = ParserEvent<"begin", { body: [Bodystmt] }>;
 export type Binary = ParserEvent<"binary", { body: [AnyNode, string, AnyNode] }>;
 export type BlockVar = ParserEvent<"block_var", { body: [Params, false | Identifier[]] }>;
@@ -625,75 +679,6 @@ export type Zsuper = ParserEvent0<"zsuper">;
 type Assignable = ArefField | ConstPathField | Field | TopConstField | VarField;
 type HashContent = AssocNew | AssocSplat;
 type ParenAroundParams = Omit<Paren, "body"> & { body: [Params] };
-
-# assoclist_from_args is a parser event that contains a list of all of the
-# associations inside of a hash literal. Its parent node is always a hash.
-# It accepts as an argument an array of assoc events (either assoc_new or
-# assoc_splat).
-def on_assoclist_from_args(assocs)
-  {
-    type: :assoclist_from_args,
-    body: assocs,
-    sl: assocs[0][:sl],
-    sc: assocs[0][:sc],
-    el: assocs[-1][:el],
-    ec: assocs[-1][:ec]
-  }
-end
-
-# backref is a scanner event that represents a global variable referencing a
-# matched value. It comes in the form of a $ followed by a positive integer.
-def on_backref(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@backref,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# backtick is a scanner event that represents the use of the ` operator. It's
-# usually found being used for an xstring, but could also be found as the name
-# of a method being defined.
-def on_backtick(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@backtick,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# bare_assoc_hash is a parser event that represents a hash of contents
-# being passed as a method argument (and therefore has omitted braces). It
-# accepts as an argument an array of assoc events (either assoc_new or
-# assoc_splat).
-def on_bare_assoc_hash(assoc_news)
-  {
-    type: :bare_assoc_hash,
-    body: assoc_news,
-    sl: assoc_news[0][:sl],
-    sc: assoc_news[0][:sc],
-    el: assoc_news[-1][:el],
-    ec: assoc_news[-1][:ec]
-  }
-end
 
 # begin is a parser event that represents the beginning of a begin..end chain.
 # It includes a bodystmt event that has all of the consequent clauses.
