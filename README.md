@@ -601,7 +601,7 @@ but can also be something like pushing a value onto an array:
 array << value
 ```
 
-The handler for this event accepts three parameters. The first and last represent the left- and right-hand side of the operation. The second parameter represents the operator being used. On most Ruby implementations, the operator is symbol (like `:+` or `:<<` for the examples above). However, on JRuby, it's an [op](#op) node which matches some other event handlers.
+The handler for this event accepts three parameters. The first and last represent the left- and right-hand side of the operation. The second parameter represents the operator being used. On most Ruby implementations, the operator is a symbol (like `:+` or `:<<` for the examples above). However, on JRuby, it's an [op](#op) node which matches some other event handlers.
 
 ```ruby
 def on_binary(left, operator, right); end
