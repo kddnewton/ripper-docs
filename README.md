@@ -643,8 +643,33 @@ In the above example, the `&block` would trigger a `blockarg` event. The handler
 def on_blockarg(ident); end
 ```
 
+### `bodystmt`
+
+`bodystmt` is a parser event that represents all of the possible combinations of clauses within the body of a method or do block. This means the regular statements and the optionally attached `rescue`, `else`, and `ensure` blocks. It can be passed up to any node that accepts these kinds of bodies like method definitions, lambdas using the `do` keyword, class and module definitions, singleton class scopes, and [begin](#begin) nodes. For example:
+
+```ruby
+class Container
+rescue
+end
+
+class << self
+rescue
+end
+
+lambda do
+rescue
+end
+```
+
+In all three of the above snippets, the `rescue` keyword is used to indicate that a `bodystmt` node is being passed up to the various parent nodes. The handler for this event accepts four parameters. The first is a [stmts_add](#stmts_add) node representing the first (and only required) set of statements. The second is an optional [rescue](#rescue) node. The third is an optional second set of statements that belong in the `else` clause if one is given. The fourth and final parameter is an optional [ensure](#ensure) node.
+
+```ruby
+def on_bodystmt(stmts, rescued, ensured, elsed); end
+```
+
+Note that it's difficult to determine the character bounds of this node since it doesn't necessarily know where it started. You can look at the first child node that you encounter, but that might be missing comments that conceptually "belong" to this node. To remedy this, if you need the chracter bounds you need to determine them in each of the parent event handlers.
+
 <!--
-export type Bodystmt = ParserEvent<"bodystmt", { body: [Stmts, null | Rescue, null | Stmts, null | Ensure] }>;
 export type BraceBlock = ParserEvent<"brace_block", { body: [null | BlockVar, Stmts], beging: Lbrace }>;
 export type Break = ParserEvent<"break", { body: [Args | ArgsAddBlock] }>;
 export type Call = ParserEvent<"call", { body: [AnyNode, CallOperator, Backtick | Op | Identifier | Const | "call"] }>;
@@ -747,40 +772,6 @@ export type Zsuper = ParserEvent0<"zsuper">;
 type Assignable = ArefField | ConstPathField | Field | TopConstField | VarField;
 type HashContent = AssocNew | AssocSplat;
 type ParenAroundParams = Omit<Paren, "body"> & { body: [Params] };
-
-# bodystmt can't actually determine its bounds appropriately because it
-# doesn't necessarily know where it started. So the parent node needs to
-# report back down into this one where it goes.
-class BodyStmt < Node
-  def bind(sc, ec)
-    value.merge!(sc: sc, ec: ec)
-    parts = value[:body]
-
-    # Here we're going to determine the bounds for the stmts
-    consequent = parts[1..-1].compact.first
-    value[:body][0].bind(sc, consequent ? consequent[:sc] : ec)
-
-    # Next we're going to determine the rescue clause if there is one
-    if parts[1]
-      consequent = parts[2..-1].compact.first
-      value[:body][1].bind_end(consequent ? consequent[:sc] : ec)
-    end
-  end
-end
-
-# bodystmt is a parser event that represents all of the possible combinations
-# of clauses within the body of a method or block.
-def on_bodystmt(stmts, rescued, ensured, elsed)
-  BodyStmt.new(
-    self,
-    type: :bodystmt,
-    body: [stmts, rescued, ensured, elsed],
-    sl: lineno,
-    sc: char_pos,
-    el: lineno,
-    ec: char_pos
-  )
-end
 
 # brace_block is a parser event that represents passing a block to a
 # method call using the {..} operators. It accepts as arguments an
