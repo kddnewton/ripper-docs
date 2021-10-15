@@ -16,13 +16,23 @@ If you'd like to see the syntax tree that Ripper generates for Ruby code, you ca
 
 ```ruby
 $ irb
-2.7.1 :001 > Ripper.sexp_raw("a=7")
- => [:program, [:stmts_add, [:stmts_new], [:assign, [:var_field, [:@ident, "a", [1, 0]]], [:@int, "7", [1, 2]]]]]
-2.7.1 :002 > Ripper.lex("a=7")
- => [[[1, 0], :on_ident, "a", CMDARG], [[1, 1], :on_op, "=", BEG], [[1, 2], :on_int, "7", END]]
-2.7.1 :003 > Ripper.sexp("a=7")
- => [:program, [[:assign, [:var_field, [:@ident, "a", [1, 0]]], [:@int, "7", [1, 2]]]]]
+irb(main):001:0> require "ripper"
+=> false
+irb(main):002:0> pp Ripper.sexp_raw("a=7")
+[:program,
+ [:stmts_add,
+  [:stmts_new],
+  [:assign, [:var_field, [:@ident, "a", [1, 0]]], [:@int, "7", [1, 2]]]]]
+irb(main):003:0> pp Ripper.lex("a=7")
+[[[1, 0], :on_ident, "a", CMDARG],
+ [[1, 1], :on_op, "=", BEG],
+ [[1, 2], :on_int, "7", END]]
+irb(main):004:0> pp Ripper.sexp("a=7")
+[:program,
+ [[:assign, [:var_field, [:@ident, "a", [1, 0]]], [:@int, "7", [1, 2]]]]]
 ```
+
+Scanner events tend to include the location where the token starts as an array of two integers, such as `[1,2]` above. The first number is a 1-indexed line number (in this case line 1) and a 0-indexed character number within the line (for `[1,2]`, 2 means the third character of that line.)
 
 ## Ripper Events
 
@@ -42,7 +52,7 @@ There are patterns in the various Ripper events that make it slightly easier to 
 
 Often your Ruby code will contain a variable-length list of items, like parameters to a method call, or items in an array, or statements inside a block. Ripper doesn't use variable-length events. Instead, every event has a fixed number of items.
 
-In order to keep the number of parameters fixed, Ripper often creates an empty item and then adds to it. For instance, here is how array literals are parsed by Ripper:
+In order to keep the number of parameters fixed for each event, Ripper often creates an empty item and then adds to it. For instance, here is how array literals are parsed by Ripper:
 
 ```ruby
 2.7.1 :004 > pp Ripper.sexp_raw("[1, 2, 3, 4, 5]")
@@ -63,7 +73,7 @@ In order to keep the number of parameters fixed, Ripper often creates an empty i
 
 Notice that `[:args_new]` has no additional parameters, and the other array elements are added one at a time using `args_add`.
 
-One of the differences between `::sexp` and `::sexp_raw` is that it collapses some of these chains of calls into an N-element list:
+One of the differences between `::sexp` and `::sexp_raw` is that it replaces \_new/\_add chains with a Ruby array, such as stmts_new/stmts_add being replaced here:
 
 ```ruby
 2.7.1 :005 > pp Ripper.sexp("[1, 2, 3, 4, 5]")
@@ -76,7 +86,7 @@ One of the differences between `::sexp` and `::sexp_raw` is that it collapses so
     [:@int, "5", [1, 13]]]]]]
 ```
 
-The [args_new](#args_new)/[args_add](#args_add) events are used for a list of call parameters. But they aren't the only similar set of events. Events used in similar ways include:
+The [args_new](#args_new)/[args_add](#args_add) events are used for a list of method call parameters. But they aren't the only similar set of events. Events used in similar ways include:
 
 * [args_new](#args_new)/[args_add](#args_add)/[args_add_block](#args_add_block)/[args_add_star](#args_add_star)/[args_forward](#args_forward) - argument lists
 * [mlhs_new](#mlhs_new)/[mlhs_add](#mlhs_add) - left-hand side of a multiple assignment list
@@ -90,16 +100,6 @@ The [args_new](#args_new)/[args_add](#args_add) events are used for a list of ca
 * [word_new](#word_new)/[word_add](#word_add) - word parts within a `%W` array literal
 * [words_new](#words_new)/[words_add](#words_add) - `%W` array literal parts
 * [xstring_new](#xstring_new)/[xstring_add](#xstring_add) - `%x` command string literal parts
-
-Each of these groups of events represents a potentially infinite N-ary list of syntax. Because parser generators don't usually support that kind of construct, each sequential piece is added in turn. So the parser generator code looks something like:
-
-```c
-qsym_list	:
-  /* none */
-    { $$ = dispatch0(qsymbols_new); }
-  | qsym_list tSTRING_CONTENT ' '
-    { $$ = dispatch2(qsymbols_add, $1, $2) };
-```
 
 Other events, such as [qsymbols_new](#qsymbols_new)/[qsymbols_add](#qsymbols_add) work very much like [args_new](#args_new)/[args_add](#args_add), and this \_new/\_add naming convention is common. Here's what qsymbols new/add looks like in `::sexp_raw`:
 
@@ -116,11 +116,11 @@ Other events, such as [qsymbols_new](#qsymbols_new)/[qsymbols_add](#qsymbols_add
     [:@tstring_content, "three", [1, 11]]]]]]
 ```
 
-When using Ripper, this is often handled by the `*_new` methods creating an array and the `*_add` methods appending to that array. This results in a flatter syntax tree, similar to what sexp produces. You can see this pattern used in `Ripper::SexpBuilderPP`, which ships with Ruby [here](https://github.com/ruby/ruby/blob/38d255d023373a665ce0d2622ed6e25462653a2a/ext/ripper/lib/ripper/sexp.rb#L178-L184).
+When using Ripper by inheriting from the Ripper parent class, this is often handled by the `*_new` methods creating an array and the `*_add` methods appending to that array. You can see this pattern used in `Ripper::SexpBuilderPP`, which generates the `sexp` return values, [here](https://github.com/ruby/ruby/blob/38d255d023373a665ce0d2622ed6e25462653a2a/ext/ripper/lib/ripper/sexp.rb#L178-L184).
 
 ### Statements
 
-Certain nodes function as wrappers around lists of statements (`stmts_add`/`stmts_new` nodes). Fortunately, they are all handled in the same way for each node type, which makes them simpler to work with if you're going to be iterating through statement lists (for instance in a formatter or a static analyzer). The nodes that wrap statements are:
+Certain nodes function as wrappers around lists of statements (`stmts_add`/`stmts_new` nodes). For instance, an `if` or `else` block normally contains a list of statements, or the inside of a `while` loop, `rescue` clause or `proc`. Fortunately, they are all handled in the same way for each node type, which makes them simpler to work with if you're going to be iterating through statement lists (for instance in a formatter or a static analyzer). The nodes that wrap statements are:
 
 * [BEGIN](#BEGIN) - the only argument
 * [END](#END) - the only argument
@@ -183,6 +183,80 @@ For these reasons, it's easiest to rely on location information from the scanner
 
 ## Events
 
+Ripper works in an evented style internally. To use it that way, you'll usually want to inherit from the Ripper parent class, define some methods and parse your code. Here's a very simple example using the [heredoc_beg](#heredoc_beg) scanner event:
+
+```ruby
+require "ripper"
+
+class HeredocFinder < ::Ripper
+  def on_heredoc_beg(start_line)
+    if start_line.start_with?("<<") && !start_line.start_with?("<<~")
+      puts "Warning: use only indenting heredocs! Problem in #{filename} at location #{lineno}:#{column}"
+    end
+  end
+end
+
+HeredocFinder.new(DATA, __FILE__, DATA.lineno + 1).parse
+__END__
+puts <<EXAMPLE
+  This is a multiline
+  heredoc in Ruby
+EXAMPLE
+```
+
+Parser events can be handed in the same way. Remember that if you return different values from handlers (like `on_args_new`/`on_args_add`), this may change the values other handlers receive (like `on_method_add_arg`.)
+
+The Ruby parser can be complicated, and can generate a variety of nodes and structures. You should probably check the source code you care about using Ripper.sexp_raw and Ripper.lex to see what events occur for that source code. Ripper::PARSER_EVENT_TABLE contains a mapping of all events to their arity (number of arguments.) The parser table can be useful when detecting many or all events at once, or when forwarding all unrecognised events to a different piece of code.
+
+Here is a more complicated event-based parser example:
+
+```ruby
+require "ripper"
+
+class CallArgListPrinter < ::Ripper
+  def initialize(*args, **kw)
+    @all_calls = []
+    super
+  end
+
+  def on_method_add_arg(called, call_item)
+    @all_calls.push [called, call_item]
+    [called, call_item]
+  end
+
+  # If you don't return a value for args_new/args_add, you won't get argument data for on_method_add_arg.
+  def on_args_new()
+    { line: lineno, col: column, args: [] }
+  end
+
+  def on_args_add(call_item, arg)
+    call_item[:args].push arg
+    call_item
+  end
+
+  def print_out
+    @all_calls.each do |val|
+      puts "Call: #{val.inspect}"
+    end
+  end
+end
+
+parser = CallArgListPrinter.new(DATA, __FILE__, DATA.lineno + 1)
+parser.parse
+parser.print_out
+__END__
+
+a(1, 2, 3)
+
+c.call(4, 5, 6)
+
+# Not detected because it uses call instead of fcall and method_add_arg
+"ruby".reverse
+
+# Detected but generates a significantly different AST, which confuses our simple logic
+"ruby".split("u")
+```
+
 ### `BEGIN`
 
 `BEGIN` is a parser event that represents the use of the `BEGIN` keyword, which hooks into the lifecycle of the interpreter. Whatever is inside the block will get executed when the program starts. The syntax looks like the following:
@@ -192,7 +266,9 @@ BEGIN {
 }
 ```
 
-Interestingly, you can't use the `do...end` keywords for the block. The handler for this event accepts one parameter that is always a `stmts` node:
+Interestingly, BEGIN doesn't allow the `do...end` keywords for the block. Only braces are permitted.
+
+The handler for this event accepts one parameter that is always a `stmts` node:
 
 ```ruby
 def on_BEGIN(stmts); end
@@ -545,7 +621,7 @@ def on_backref(value); end
 
 ### `backtick`
 
-`backtick` is a scanner event that represents the use of the ` operator. It's usually found being used for an [xstring_literal](#xstring_literal), but could also be found as the name of a method being defined.
+`backtick` is a scanner event that represents the use of the \` operator. It's usually found being used for an [xstring_literal](#xstring_literal), but could also be found as the name of a method being defined.
 
 ```ruby
 `ls`
