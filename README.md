@@ -629,8 +629,21 @@ With this syntax, `local` becomes a variable local only to the block, and can sh
 def on_block_var(params, locals); end
 ```
 
+### `blockarg`
+
+`blockarg` is a parser event that represents declaring a block parameter on a method definition.
+
+```ruby
+def method(&block); end
+```
+
+In the above example, the `&block` would trigger a `blockarg` event. The handler for this event always accepts a single [ident](#ident) parameter which represents the name of the block parameter.
+
+```ruby
+def on_blockarg(ident); end
+```
+
 <!--
-export type Blockarg = ParserEvent<"blockarg", { body: [Identifier] }>;
 export type Bodystmt = ParserEvent<"bodystmt", { body: [Stmts, null | Rescue, null | Stmts, null | Ensure] }>;
 export type BraceBlock = ParserEvent<"brace_block", { body: [null | BlockVar, Stmts], beging: Lbrace }>;
 export type Break = ParserEvent<"break", { body: [Args | ArgsAddBlock] }>;
@@ -734,17 +747,6 @@ export type Zsuper = ParserEvent0<"zsuper">;
 type Assignable = ArefField | ConstPathField | Field | TopConstField | VarField;
 type HashContent = AssocNew | AssocSplat;
 type ParenAroundParams = Omit<Paren, "body"> & { body: [Params] };
-
-# blockarg is a parser event that represents defining a block variable on
-# a method definition.
-def on_blockarg(ident)
-  find_scanner_event(:@op, '&').merge!(
-    type: :blockarg,
-    body: [ident],
-    el: ident[:el],
-    ec: ident[:ec]
-  )
-end
 
 # bodystmt can't actually determine its bounds appropriately because it
 # doesn't necessarily know where it started. So the parent node needs to
