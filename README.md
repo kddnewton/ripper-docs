@@ -571,10 +571,65 @@ In the above example, the event would be triggered for the source bound between 
 def on_bare_assoc_hash(assocs); end
 ```
 
+### `begin`
+
+`begin` is a parser event that represents the beginning of a `begin`..`end` chain.
+
+```ruby
+begin
+  value
+end
+```
+
+The handler for this event accepts a single [bodystmt](#bodystmt) event that has all of the potential clauses (`rescue`/`else`/`ensure`).
+
+```ruby
+def on_begin(bodystmt); end
+```
+
+### `binary`
+
+`binary` is a parser event that represents any expression that involves two sub-expressions with an operator in between. This can be something that looks like a mathematical operation:
+
+```ruby
+1 + 1
+```
+
+but can also be something like pushing a value onto an array:
+
+```ruby
+array << value
+```
+
+The handler for this event accepts three parameters. The first and last represent the left- and right-hand side of the operation. The second parameter represents the operator being used. On most Ruby implementations, the operator is symbol (like `:+` or `:<<` for the examples above). However, on JRuby, it's an [op](#op) node which matches some other event handlers.
+
+```ruby
+def on_binary(left, operator, right); end
+```
+
+### `block_var`
+
+`block_var` is a parser event that represents the parameters being declared for a block. Effectively this event is everything contained within the pipes. This includes all of the various parameter types, as well as block-local variable declarations. For example:
+
+```ruby
+method do |positional, optional = value, keyword:, &block|
+end
+```
+
+In the above example, all of those parameters would be included inside the child [params](#params) node. You can use a relatively esoteric syntax for declaring block-local variables, as in:
+
+```ruby
+method do |positional; local|
+end
+```
+
+With this syntax, `local` becomes a variable local only to the block, and can shadow an outer variable without overwriting or modifying it. The handler for this event accepts two parameters. The first is the [params](#params) node that contains all of the declared parameters. The second is an optional array of [ident](#ident) nodes that represent any declared block-local variables. If none are present, then the second parameter will be the literal `false`.
+
+```ruby
+def on_block_var(params, locals); end
+```
+
 <!--
-export type Begin = ParserEvent<"begin", { body: [Bodystmt] }>;
-export type Binary = ParserEvent<"binary", { body: [AnyNode, string, AnyNode] }>;
-export type BlockVar = ParserEvent<"block_var", { body: [Params, false | Identifier[]] }>;
 export type Blockarg = ParserEvent<"blockarg", { body: [Identifier] }>;
 export type Bodystmt = ParserEvent<"bodystmt", { body: [Stmts, null | Rescue, null | Stmts, null | Ensure] }>;
 export type BraceBlock = ParserEvent<"brace_block", { body: [null | BlockVar, Stmts], beging: Lbrace }>;
@@ -679,68 +734,6 @@ export type Zsuper = ParserEvent0<"zsuper">;
 type Assignable = ArefField | ConstPathField | Field | TopConstField | VarField;
 type HashContent = AssocNew | AssocSplat;
 type ParenAroundParams = Omit<Paren, "body"> & { body: [Params] };
-
-# begin is a parser event that represents the beginning of a begin..end chain.
-# It includes a bodystmt event that has all of the consequent clauses.
-def on_begin(bodystmt)
-  beging = find_scanner_event(:@kw, 'begin')
-  ec =
-    if bodystmt[:body][1..-1].any?
-      bodystmt[:ec]
-    else
-      find_scanner_event(:@kw, 'end')[:ec]
-    end
-
-  bodystmt.bind(beging[:ec], ec)
-
-  beging.merge!(
-    type: :begin,
-    body: [bodystmt],
-    el: bodystmt[:el],
-    ec: bodystmt[:ec]
-  )
-end
-
-# binary is a parser event that represents a binary operation between two
-# values.
-def on_binary(left, oper, right)
-  # On most Ruby implementations, oper is a Symbol that represents that
-  # operation being performed. For instance in the example `1 < 2`, the `oper`
-  # object would be `:<`. However, on JRuby, it's an `@op` node, so here we're
-  # going to explicitly convert it into the same normalized form.
-  oper = scanner_events.delete(oper)[:body] unless oper.is_a?(Symbol)
-
-  {
-    type: :binary,
-    body: [left, oper, right],
-    sl: left[:sl],
-    sc: left[:sc],
-    el: right[:el],
-    ec: right[:ec]
-  }
-end
-
-# block_var is a parser event that represents the parameters being passed to
-# block. Effectively they're everything contained within the pipes.
-def on_block_var(params, locals)
-  index =
-    scanner_events.rindex do |event|
-      event[:type] == :@op && %w[| ||].include?(event[:body]) &&
-        event[:sc] < params[:sc]
-    end
-
-  beging = scanner_events[index]
-  ending = scanner_events[-1]
-
-  {
-    type: :block_var,
-    body: [params, locals],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
 
 # blockarg is a parser event that represents defining a block variable on
 # a method definition.
