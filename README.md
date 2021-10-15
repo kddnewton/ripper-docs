@@ -669,13 +669,154 @@ def on_bodystmt(stmts, rescued, ensured, elsed); end
 
 Note that it's difficult to determine the character bounds of this node since it doesn't necessarily know where it started. You can look at the first child node that you encounter, but that might be missing comments that conceptually "belong" to this node. To remedy this, if you need the chracter bounds you need to determine them in each of the parent event handlers.
 
+### `brace_block`
+
+`brace_block` is a parser event that represents passing a block to a method call using the `{` `}` operators. For example:
+
+```ruby
+method { variable + 1 }
+method { |variable| variable + 1 }
+```
+
+The handler for this event accepts as arguments an optional [block_var](#block_var) event that represents any parameters to the block as well as a [stmts_add](#stmts_add) event that represents the statements inside the block. So in the first line of the example above the first parameter would be `nil`, but in the second line it would be present.
+
+```ruby
+def on_brace_block(block_var, stmts); end
+```
+
+### `break`
+
+`break` is a parser event that represents using the `break` keyword. For example:
+
+```ruby
+break
+break 1
+```
+
+The handler for this event accepts one parameter that is an [args_new](#args_new) event (in the case of no parameters, as in the first line of the example) or an [args_add_block](#args_add_block) event (in the case parameters were passed, as in the second line of the example) that contains all of the arguments being passed to the `break` keyword.
+
+```ruby
+def on_break(args); end
+```
+
+### `call`
+
+`call` is a parser event representing a method call. This event doesn't contain the arguments being passed (if arguments _are_ passed, this node will get nested under a [method_add_arg](#method_add_arg) node).
+
+```ruby
+receiver.message
+```
+
+There is one esoteric syntax that comes into play here as well. If the last parameter to the handler for this event is the symbol literal `:call`, then it represents calling a callable object in a very odd looking way, as in:
+
+```ruby
+callable.(1, 2, 3)
+```
+
+The handler for this event accepts as parameters the receiver of the message (which can be another nested `call` as well), the operator being used to send the message (this can be an [op](#op) node containing `.` or `&.`, or the symbol literal `:"::"`), and the message that is being sent to the receiver. The message will usually be an [ident](#ident) node, but can also be a [backtick](#backtick), [op](#op), or [const](#const) node, depending on the look of the message. It can also be the already mentioned `:call` symbol literal.
+
+```ruby
+def on_call(receiver, operator, message); end
+```
+
+### `case`
+
+`case` is a parser event that represents the beginning of a `case` chain. For example:
+
+```ruby
+case value
+when 1
+  "one"
+when 2
+  "two"
+else
+  "number"
+end
+```
+
+The handler for this event accepts two parameters: the optional value that is being used as the predicate for the `case` chain, and the consequent clause (a [when](#when) or [in](#in) clause).
+
+```ruby
+def on_case(switch, consequent); end
+```
+
+### `class`
+
+`class` is a parser event that represents defining a class using the `class` keyword. For example:
+
+```ruby
+class Container
+end
+```
+
+Classes can have path names as their class name in case it's being nested under a namespace, as in:
+
+```ruby
+class Namespace::Container
+end
+```
+
+Classes can also be defined as a top-level path, in the case that it's already in a namespace but you want to define it at the top-level instead, as in:
+
+```ruby
+module OtherNamespace
+  class ::Namespace::Container
+  end
+end
+```
+
+All of these declarations can also have an optional superclass reference, as in:
+
+```ruby
+class Child < Parent
+end
+```
+
+That superclass can actually be any Ruby expression, it doesn't necessarily need to be a constant, as in:
+
+```ruby
+class Child < method
+end
+```
+
+The handler for this event accepts as parameters the name of the class (a [const_path_ref](#const_path_ref), [const_ref](#const_ref), or [top_const_ref](#top_const_ref) node), the optional value of the superclass (any Ruby expression), and the [bodystmt](#bodystmt) event that represents the statements evaluated within the context of the class.
+
+```ruby
+def on_class(const, superclass, bodystmt); end
+```
+
+### `comma`
+
+`comma` is a scanner event that represents the use of the `,` operator. In general you don't necessarily need to handle this event, but it's useful for determining if the source is using trailing commas in literals or method calls.
+
+```ruby
+method(
+  parameter1,
+  parameter2,
+)
+```
+
+The above example would trigger two `comma` events. The handler accepts a single string parameter that always contains a single comma.
+
+```ruby
+def on_comma(value); end
+```
+
+### `command`
+
+`command` is a parser event representing a method call with arguments and no parentheses. Note that `command` events only happen when there is no explicit receiver for this method, as in the following example:
+
+```ruby
+method argument
+```
+
+The handler for this event accepts as arguments the name of the method (either a [const](#const) or an [ident](#ident) node) and the arguments being passed to the method (as an [args_add_block](#args_add_block) node).
+
+```ruby
+def on_command(message, args); end
+```
+
 <!--
-export type BraceBlock = ParserEvent<"brace_block", { body: [null | BlockVar, Stmts], beging: Lbrace }>;
-export type Break = ParserEvent<"break", { body: [Args | ArgsAddBlock] }>;
-export type Call = ParserEvent<"call", { body: [AnyNode, CallOperator, Backtick | Op | Identifier | Const | "call"] }>;
-export type CallOperator = Op | Period | "::";
-export type Case = ParserEvent<"case", { body: [AnyNode, In | When] }>;
-export type Class = ParserEvent<"class", { body: [ConstPathRef | ConstRef | TopConstRef, null | AnyNode, Bodystmt] }>;
 export type Command = ParserEvent<"command", { body: [Const | Identifier, Args | ArgsAddBlock] }>;
 export type CommandCall = ParserEvent<"command_call", { body: [AnyNode, CallOperator, Op | Identifier | Const, Args | ArgsAddBlock] }>;
 export type ConstPathField = ParserEvent<"const_path_field", { body: [ConstPathRef | Paren | TopConstRef | VarRef, Const] }>;
@@ -772,157 +913,6 @@ export type Zsuper = ParserEvent0<"zsuper">;
 type Assignable = ArefField | ConstPathField | Field | TopConstField | VarField;
 type HashContent = AssocNew | AssocSplat;
 type ParenAroundParams = Omit<Paren, "body"> & { body: [Params] };
-
-# brace_block is a parser event that represents passing a block to a
-# method call using the {..} operators. It accepts as arguments an
-# optional block_var event that represents any parameters to the block as
-# well as a stmts event that represents the statements inside the block.
-def on_brace_block(block_var, stmts)
-  beging = find_scanner_event(:@lbrace)
-  ending = find_scanner_event(:@rbrace)
-
-  stmts.bind(
-    find_next_statement_start((block_var || beging)[:ec]),
-    ending[:sc]
-  )
-
-  {
-    type: :brace_block,
-    body: [block_var, stmts],
-    beging: beging,
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: [ending[:el], stmts[:el]].max,
-    ec: ending[:ec]
-  }
-end
-
-# break is a parser event that represents using the break keyword. It
-# accepts as an argument an args or args_add_block event that contains all
-# of the arguments being passed to the break.
-def on_break(args_add_block)
-  beging = find_scanner_event(:@kw, 'break')
-
-  # You can hit this if you are passing no arguments to break but it has a
-  # comment right after it. In that case we can just use the location
-  # information straight from the keyword.
-  if args_add_block[:type] == :args
-    return beging.merge!(type: :break, body: [args_add_block])
-  end
-
-  beging.merge!(
-    type: :break,
-    body: [args_add_block],
-    el: args_add_block[:el],
-    ec: args_add_block[:ec]
-  )
-end
-
-# call is a parser event representing a method call with no arguments. It
-# accepts as arguments the receiver of the method, the operator being used
-# to send the method (., ::, or &.), and the value that is being sent to
-# the receiver (which can be another nested call as well).
-#
-# There is one esoteric syntax that comes into play here as well. If the
-# sending argument to this method is the symbol :call, then it represents
-# calling a lambda in a very odd looking way, as in:
-#
-#     foo.(1, 2, 3)
-#
-def on_call(receiver, oper, sending)
-  ending = sending
-
-  if sending == :call
-    ending = oper
-
-    # Special handling here for Ruby <= 2.5 because the oper argument to this
-    # method wasn't a parser event here it was just a plain symbol.
-    ending = receiver if RUBY_MAJOR <= 2 && RUBY_MINOR <= 5
-  end
-
-  {
-    type: :call,
-    body: [receiver, oper, sending],
-    sl: receiver[:sl],
-    sc: receiver[:sc],
-    el: [ending[:el], receiver[:el]].max,
-    ec: ending[:ec]
-  }
-end
-
-# case is a parser event that represents the beginning of a case chain.
-# It accepts as arguments the switch of the case and the consequent
-# clause.
-def on_case(switch, consequent)
-  beging =
-    if event = find_scanner_event(:@kw, 'case', consume: false)
-      scanner_events.delete(event).merge!(type: :case)
-    else
-      keyword = find_scanner_event(:@kw, 'in', consume: false)
-      switch.merge(type: :rassign, keyword: keyword)
-    end
-
-  beging.merge!(
-    body: [switch, consequent],
-    el: consequent[:el],
-    ec: consequent[:ec]
-  )
-end
-
-# class is a parser event that represents defining a class. It accepts as
-# arguments the name of the class, the optional name of the superclass,
-# and the bodystmt event that represents the statements evaluated within
-# the context of the class.
-def on_class(const, superclass, bodystmt)
-  beging = find_scanner_event(:@kw, 'class')
-  ending = find_scanner_event(:@kw, 'end')
-
-  bodystmt.bind(
-    find_next_statement_start((superclass || const)[:ec]),
-    ending[:sc]
-  )
-
-  {
-    type: :class,
-    body: [const, superclass, bodystmt],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# comma is a scanner event that represents the use of the comma operator.
-def on_comma(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@comma,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# command is a parser event representing a method call with arguments and
-# no parentheses. It accepts as arguments the name of the method and the
-# arguments being passed to the method.
-def on_command(ident, args)
-  {
-    type: :command,
-    body: [ident, args],
-    sl: ident[:sl],
-    sc: ident[:sc],
-    el: args[:el],
-    ec: args[:ec]
-  }
-end
 
 # command_call is a parser event representing a method call on an object
 # with arguments and no parentheses. It accepts as arguments the receiver
