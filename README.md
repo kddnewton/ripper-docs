@@ -892,9 +892,37 @@ The handler for this event accepts as arguments the name of the method (either a
 def on_command(message, args); end
 ```
 
+### `command_call`
+
+`command_call` is a parser event representing a method call on an object with arguments and no parentheses.
+
+```ruby
+object.method argument
+```
+
+The handler for this event accepts as arguments the receiver of the method (any Ruby expression), the operator being used to send the method (this can be an [op](#op) node containing `.` or `&.`, or the symbol literal `:"::"`), the name of the method (an [op](#op), [ident](#ident), or [const](#const) node, depending on what the method name looks like), and the arguments being passed to the method (an [args_add_block](#args_add_block) node).
+
+```ruby
+def on_command_call(receiver, operator, method, args); end
+```
+
+### `comment`
+
+`comment` is a scanner event that represents a comment in source.
+
+```ruby
+# comment
+```
+
+The above example would trigger one `comment` events. The handler accepts a single string parameter that contains the value of the comment (including the `#` sign).
+
+```ruby
+def on_comment(value); end
+```
+
+Note that this is one of three scanner events that give you a string value that can potentially extend beyond the range of ASCII (the other two are [ident](#ident) and [tstring_content](#tstring_content)). If there's a magic encoding comment at the top of the source that ripper is parsing (as in `# encoding: Shift_JIS`) then the encoding of the string being passed into the handler for this event will match it. If you're planning on serializing the resulting syntax tree in any way, it's important to handle the encoding change in this event handler.
+
 <!--
-export type Command = ParserEvent<"command", { body: [Const | Identifier, Args | ArgsAddBlock] }>;
-export type CommandCall = ParserEvent<"command_call", { body: [AnyNode, CallOperator, Op | Identifier | Const, Args | ArgsAddBlock] }>;
 export type ConstPathField = ParserEvent<"const_path_field", { body: [ConstPathRef | Paren | TopConstRef | VarRef, Const] }>;
 export type ConstPathRef = ParserEvent<"const_path_ref", { body: [AnyNode, Const] }>;
 export type ConstRef = ParserEvent<"const_ref", { body: [Const] }>;
@@ -989,49 +1017,6 @@ export type Zsuper = ParserEvent0<"zsuper">;
 type Assignable = ArefField | ConstPathField | Field | TopConstField | VarField;
 type HashContent = AssocNew | AssocSplat;
 type ParenAroundParams = Omit<Paren, "body"> & { body: [Params] };
-
-# command_call is a parser event representing a method call on an object
-# with arguments and no parentheses. It accepts as arguments the receiver
-# of the method, the operator being used to send the method, the name of
-# the method, and the arguments being passed to the method.
-def on_command_call(receiver, oper, ident, args)
-  ending = args || ident
-
-  {
-    type: :command_call,
-    body: [receiver, oper, ident, args],
-    sl: receiver[:sl],
-    sc: receiver[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# We keep track of each comment as it comes in and then eventually add
-# them to the top of the generated AST so that prettier can start adding
-# them back into the final representation. Comments come in including
-# their starting pound sign and the newline at the end, so we also chop
-# those off.
-def on_comment(value)
-  # If there is an encoding magic comment at the top of the file, ripper
-  # will actually change into that encoding for the storage of the string.
-  # This will break everything when we attempt to print as JSON, so we need to
-  # force the encoding back into UTF-8 so that it won't break.
-  body = value[1..-1].chomp.force_encoding('UTF-8')
-
-  start_line = lineno
-  start_char = char_pos
-
-  @comments << {
-    type: :@comment,
-    value: body,
-    inline: value.strip != lines[lineno - 1],
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.length - 1
-  }
-end
 
 # const is a scanner event that represents a literal value that _looks like_
 # a constant. This could actually be a reference to a constant. It could also
