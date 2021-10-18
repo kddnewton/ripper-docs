@@ -1751,10 +1751,83 @@ def on_magic_comment(key, value); end
 
 Note that the return value of this method will be passed immediately up into the [comment](#comment) event handler. So it is possible to skip this handler definition entirely and just process it in the comments handler.
 
+### `massign`
+
+`massign` is a parser event that is a parent node of any kind of multiple assignment. This includes splitting out variables on the left like:
+
+```ruby
+first, second, third = value
+```
+
+as well as splitting out variables on the right, as in:
+
+```ruby
+value = first, second, third
+```
+
+Both sides support splats, as well as variables following them. There's also destructuring behavior that you can achieve with the following:
+
+```ruby
+first, = value
+```
+
+In this case a would receive only the first value of the `value` enumerable. The handler for this event accepts two parameters representing the left and right side of the `=` operator. The left-hand side will be any of [mlhs](#mlhs), [mlhs_add_post](#mlhs_add_post), [mlhs_add_star](#mlhs_add_star), or [mlhs_paren](#mlhs_paren) depending on how it is declared. The right-hand side will be any Ruby expression.
+
+```ruby
+def on_massign(left, right); end
+```
+
+### `method_add_arg`
+
+`method_add_arg` is a parser event that represents a method call with arguments and parentheses.
+
+```ruby
+method(argument)
+```
+
+The handler for this event accepts two parameters. The first represents the method being called, the second represents the arguments being passed to the method. In the example above, those would be [fcall](#fcall) and [arg_paren](#arg_paren) nodes, respectively.
+
+You can also dispatch a `method_add_arg` event with a method on an object, as in:
+
+```ruby
+object.method(argument)
+```
+
+In this case the first parameter would be a [call](#call) node. Finally, you can dispatch a `method_add_arg` event when you are calling a method with no receiver that ends in a `?`. In this case, the parser knows it's a method call and not a local variable, so it dispatches a `method_add_arg` event as opposed to a [vcall](#vcall) event, as in:
+
+```ruby
+method?
+```
+
+In that case, the second parameter would be an [args_new](#args_new) event.
+
+```ruby
+def on_method_add_arg(method, args); end
+```
+
+### `method_add_block`
+
+`method_add_block` is a parser event that represents a method call with a block argument.
+
+```ruby
+method {}
+```
+
+The handler for this event accepts two parameters, the method being called and the block being passed. The first can be a lot of different kinds of nodes, depending on how the method is being called. That parameter can be:
+
+* [fcall](#fcall) if there is no explicit receiver (`method {}`)
+* [call](#call) if there is an explicit receiver (`object.method {}`)
+* [method_add_arg](#method_add_arg) if there are arguments in parentheses (`method(value) {}`)
+* [command](#command) if there is no explicit receiver, it's a [do_block](#do_block) for the block, and there are arguments (`method value do end`)
+* [command_call](#command_call) if there is an explicit receiver, it's a [do_block](#do_block) for the block, and there are arguments (`object.method value do end`)
+
+The second parameter will always be a [brace_block](#brace_block) or a [do_block](#do_block) node.
+
+```ruby
+def on_method_add_block(method, block); end
+```
+
 <!--
-export type Massign = ParserEvent<"massign", { body: [Mlhs | MlhsAddPost | MlhsAddStar | MlhsParen, AnyNode] }>;
-export type MethodAddArg = ParserEvent<"method_add_arg", { body: [Call | Fcall, Args | ArgParen | ArgsAddBlock] }>;
-export type MethodAddBlock = ParserEvent<"method_add_block", { body: [AnyNode, BraceBlock | DoBlock] }>;
 export type Mlhs = ParserEvent<"mlhs", { body: (ArefField | Field | Identifier | MlhsParen | VarField)[], comma: undefined | true }>;
 export type MlhsAddPost = ParserEvent<"mlhs_add_post", { body: [MlhsAddStar, Mlhs] }>;
 export type MlhsAddStar = ParserEvent<"mlhs_add_star", { body: [Mlhs, null | ArefField | Field | Identifier | VarField] }>;
@@ -1818,72 +1891,6 @@ export type Zsuper = ParserEvent0<"zsuper">;
 type Assignable = ArefField | ConstPathField | Field | TopConstField | VarField;
 type HashContent = AssocNew | AssocSplat;
 type ParenAroundParams = Omit<Paren, "body"> & { body: [Params] };
-
-# massign is a parser event that is a parent node of any kind of multiple
-# assignment. This includes splitting out variables on the left like:
-#
-#     a, b, c = foo
-#
-# as well as splitting out variables on the right, as in:
-#
-#     foo = a, b, c
-#
-# Both sides support splats, as well as variables following them. There's
-# also slightly odd behavior that you can achieve with the following:
-#
-#     a, = foo
-#
-# In this case a would receive only the first value of the foo enumerable,
-# in which case we need to explicitly track the comma and add it onto the
-# child node.
-def on_massign(left, right)
-  left[:comma] = true if source[left[:ec]...right[:sc]].strip.start_with?(',')
-
-  {
-    type: :massign,
-    body: [left, right],
-    sl: left[:sl],
-    sc: left[:sc],
-    el: right[:el],
-    ec: right[:ec]
-  }
-end
-
-# method_add_arg is a parser event that represents a method call with
-# arguments and parentheses. It accepts as arguments the method being called
-# and the arg_paren event that contains the arguments to the method.
-def on_method_add_arg(fcall, arg_paren)
-  # You can hit this if you are passing no arguments to a method that ends in
-  # a question mark. Because it knows it has to be a method and not a local
-  # variable. In that case we can just use the location information straight
-  # from the fcall.
-  if arg_paren[:type] == :args
-    return fcall.merge(type: :method_add_arg, body: [fcall, arg_paren])
-  end
-
-  {
-    type: :method_add_arg,
-    body: [fcall, arg_paren],
-    sl: fcall[:sl],
-    sc: fcall[:sc],
-    el: arg_paren[:el],
-    ec: arg_paren[:ec]
-  }
-end
-
-# method_add_block is a parser event that represents a method call with a
-# block argument. It accepts as arguments the method being called and the
-# block event.
-def on_method_add_block(method_add_arg, block)
-  {
-    type: :method_add_block,
-    body: [method_add_arg, block],
-    sl: method_add_arg[:sl],
-    sc: method_add_arg[:sc],
-    el: block[:el],
-    ec: block[:ec]
-  }
-end
 
 # An mlhs_new is a parser event that represents the beginning of the left
 # side of a multiple assignment. It is followed by any number of mlhs_add
