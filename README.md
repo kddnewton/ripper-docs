@@ -148,7 +148,7 @@ Certain nodes are named similarly which can indicate similar functionality.
 A couple of common prefixes you will find in the list of events include:
 
 * `assoc*` - having to do with the contents of a hash. This includes [assoc_new](#assoc_new) (a key/value pair in a hash), [assoc_splat](#assoc_splat) (a splatted expression in a hash), and [assoclist_from_args](#assoclist_from_args) (the node that wraps a list of the `assoc_*` nodes inside a hash).
-* `def*` - having to do with defining methods. This includes [def](#def) (a regular method definition), [defs](#defs) (a singleton-class method definition), and [defsl](#defsl) (a single-line method definition).
+* `def*` - having to do with defining methods. This includes [def](#def) (a regular method definition), [defs](#defs) (a singleton-class method definition).
 * `m*` - mostly nodes that relate to mass assignment. This includes [massign](#massign) (the overall parent node), [mlhs](#mlhs) (the left-hand side (LHS) of a mass assignment), [mlhs_add_post](#mlhs_add_post) (LHS of a mass assignment nodes that are after a splat), [mlhs_add_star](#mlhs_add_star) (LHS of a mass assign nodes that are splatted), [mlhs_paren](#mlhs_paren) (parentheses used in the LHS of a mass assign node, usually for destructuring), [mrhs](#mrhs) (the right-hand side (RHS) of a mass assignment), [mrhs_add_star](#mrhs_add_star) (RHS of a mass assignment that is being splatted), and [mrhs_new_from_args](#mrhs_new_from_args) (creating an [mrhs](#mrhs) node from a list of arguments, as in a list of rescued exceptions).
 
 While a couple of common suffixes you will find in the list of events include:
@@ -914,32 +914,396 @@ def on_command_call(receiver, operator, method, args); end
 # comment
 ```
 
-The above example would trigger one `comment` events. The handler accepts a single string parameter that contains the value of the comment (including the `#` sign).
+The above example would trigger one `comment` events. The handler for this event accepts a single string parameter that contains the value of the comment (including the `#` sign).
 
 ```ruby
 def on_comment(value); end
 ```
 
-Note that this is one of three scanner events that give you a string value that can potentially extend beyond the range of ASCII (the other two are [ident](#ident) and [tstring_content](#tstring_content)). If there's a magic encoding comment at the top of the source that ripper is parsing (as in `# encoding: Shift_JIS`) then the encoding of the string being passed into the handler for this event will match it. If you're planning on serializing the resulting syntax tree in any way, it's important to handle the encoding change in this event handler.
+Note that this is one of a few scanner events that give you a string value that can potentially extend beyond the range of ASCII. If there's a magic encoding comment at the top of the source that ripper is parsing (as in `# encoding: Shift_JIS`) then the encoding of the string being passed into the handler for this event will match it. If you're planning on serializing the resulting syntax tree in any way, it's important to handle the encoding change in this event handler.
+
+### `const`
+
+`const` is a scanner event that represents a literal value that _looks like_ a constant. This could actually be a reference to a constant:
+
+```ruby
+Const
+```
+
+It could also be something that looks like a constant in another context, as in a method call to a capitalized method:
+
+```ruby
+object.Const
+```
+
+or a symbol that starts with a capital letter:
+
+```ruby
+:Const
+```
+
+The handler for this event accepts a single string parameter that contains the value of the const.
+
+```ruby
+def on_const(value); end
+```
+
+### `const_path_field`
+
+`const_path_field` is a parser event that always represents the child node of some kind of assignment. It represents when you're assigning to a constant that is being referenced as a child of another variable. For example:
+
+```ruby
+object::Const = value
+```
+
+The handler for this event accepts two parameters. The first is the value to the left of the `::` operator. It's the parent object of the constant that is being assigned. It can be any Ruby expression. The second is the [const](#const) node that represents the constant being assigned (as in `Const` in the example above).
+
+```ruby
+def on_const_path_field(left, const); end
+```
+
+### `const_path_ref`
+
+`const_path_ref` is a parser event that is a very similar to [const_path_field](#const_path_field) except that it is not involved in an assignment. It looks like the following example:
+
+```ruby
+object::Const
+```
+
+The handler for this event is the same as [const_path_field](#const_path_field). The first parameter for the left side of the `::` operator and the second parameter for the right.
+
+```ruby
+def on_const_path_ref(left, const); end
+```
+
+### `const_ref`
+
+`const_ref` is a parser event that represents the name of the constant being used in a class or module declaration. In the following example it is the [const](#const) scanner event that has the contents of `Container`.
+
+```ruby
+class Container; end
+```
+
+The handler for this event always accepts a single [const](#const) parameter.
+
+```ruby
+def on_const_ref(const); end
+```
+
+### `cvar`
+
+`cvar` is a scanner event that represents the use of a class variable.
+
+```ruby
+@@variable
+```
+
+The handler for this event accepts a single string parameter that contains the name of the variable including the `@@` prefix.
+ 
+ ```ruby
+def on_cvar(value); end
+```
+
+### `def`
+
+`def` is a parser event that represents defining a regular method on the current self object. It accepts as arguments an [ident](#ident) node (the name of the method being defined), a [params](#params) node (the parameter declaration for the method), and a [bodystmt](#bodystmt) node which represents the statements inside the method. As an example, here are the parts that go into this:
+
+```ruby
+def method(param) do result end
+```
+
+In this case `method` would be the [ident](#ident), `param` would be inside the [params](#params) node, and [bodystmt](#bodystmt) would contain the single `result` statement.
+
+You can also have single-line methods since Ruby 3.0+, which have slightly different syntax but still flow through this event handler. Those look like:
+
+```ruby
+def method = result
+```
+
+In this case `method` would be the [ident](#ident), the [params](#params) node would be `nil` since this single-line method doesn't declare any parameters, and the final parameter would just be a [vcall](#vcall) for the `result` method.
+
+The handler for this event accepts the [ident](#ident) and optional [params](#params) nodes (note that this will be a [paren](#paren) node containing the [params](#params) node if parentheses are used in the declaration). It also accepts the statements, which can either be a [bodystmt](#bodystmt) node in the case of a multi-line method declaration or any Ruby expression in the case of a single-line statement.
+
+```ruby
+def on_def(ident, params, body); end
+```
+
+### `defined`
+
+`defined` is a parser event that represents the use of the rather unique `defined?` operator. It can be used with and without parentheses.
+
+```ruby
+defined?(variable)
+```
+
+The handler for this event accepts a single parameter that represents whatever Ruby expression is being passed to the operator.
+
+```ruby
+def on_defined(value); end
+```
+
+### `defs`
+
+`defs` is a parser event that represents defining a singleton method on an object. For example:
+
+```ruby
+def object.method(param) do result end
+```
+
+It accepts the same arguments as the [def](#def) event, as well as the target and operator on which this method is being defined. So in the example above, the parameters would be the [vcall](#vcall) for `object` as the target, a [period](#period) node for the `operator`, and then the same parameters as the [def](#def) event above.
+
+```ruby
+def on_defs(target, operator, ident, params, body); end
+```
+
+### `do_block`
+
+`do_block` is a parser event that represents passing a block to a method call using the `do` and `end` keywords.
+
+```ruby
+method do |value|
+end
+```
+
+The handler for this event accepts as arguments an optional [block_var](#block_var) event that represents any parameters to the block as well as a [bodystmt](#bodystmt) event that represents the statements inside the block.
+
+```ruby
+def on_do_block(block_var, bodystmt); end
+```
+
+### `dot2`
+
+`dot2` is a parser event that represents using the `..` operator between two expressions. Usually this is to create a range object.
+
+```ruby
+1..2
+```
+
+Sometimes this operator is used to create a flip-flop.
+
+```ruby
+if value == 5 .. value == 10
+end
+```
+
+The handler for this event accepts two parameters representing the left and right side of the `..` operator. Note that either one of them could be `nil`, but not both.
+
+```ruby
+def on_dot2(left, right); end
+```
+
+### `dot3`
+
+`dot3` is a parser event that represents using the `...` operator between two expressions. It's effectively the same event as the [dot2](#dot2) event but with this operator you're asking Ruby to omit the final value.
+
+```ruby
+1...2
+```
+
+Like [dot2](#dot2) it can also be used to create a flip-flop.
+
+```ruby
+if value == 5 ... value == 10
+end
+```
+
+The handler for this event accepts two parameters representing the left and right side of the `...` operator. Note that either one of them could be `nil`, but not both.
+
+```ruby
+def on_dot3(left, right); end
+```
+
+### `dyna_symbol`
+
+`dyna_symbol` is a parser event that represents a symbol literal that uses quotes to interpolate its value. For example, if you had a variable `variable` and you wanted a symbol that contained its value, you would write:
+
+```ruby
+:"#{variable}"
+```
+
+They can also be used as a special kind of dynamic hash key, as in:
+
+```ruby
+{ "#{key}": value }
+```
+
+The handler for this event accepts one parameter which is either a [string_content](#string_content) node (representing an empty string, as in `:""`) or a [string_add](#string_add) node (representing a non-empty string, as in the first example).
+
+```ruby
+def on_dyna_symbol(contents); end
+```
+
+### `else`
+
+`else` is a parser event that represents the end of a `if` or `unless` chain.
+
+```ruby
+if variable
+else
+end
+```
+
+The handler for this event accepts a single [stmts_add](#stmts_add) node that represents the list of statements inside the `else` clause.
+
+```ruby
+def on_else(stmts_add); end
+```
+
+### `elsif`
+
+`elsif` is a parser event that represents another clause in an `if` or `unless` chain.
+
+```ruby
+if variable
+elsif other_variable
+end
+```
+
+The handler for this event accepts the predicate to the `elsif` operator (any Ruby expression), the statements inside the clause (a [stmts_add](#stmts_add) node) and an optional consequent clause (`elsif` or [else](#else)).
+
+```ruby
+def on_elsif(predicate, stmts_add, consequent); end
+```
+
+### `embdoc`
+
+`embdoc` is a scanner event that gets dispatched when the parser is inside a multi-line comment and receive a new line of content. For example, in the following multi-line comment, the `embdoc` event would be dispatched twice:
+
+```ruby
+=begin
+first line
+second line
+=end
+```
+
+The handler for this event accepts a single string parameter containing the value of the line of content. Note that this includes the trailing newline.
+
+```ruby
+def on_embdoc(value); end
+```
+
+### `embdoc_beg`
+
+`embdoc_beg` is a scanner event that represents the beginning of a multi-line comment.
+
+```ruby
+=begin
+comment
+=end
+```
+
+In the above example, it represents the `=begin` string. The handler for this event accepts a single string parameter that always contains `"=begin\n"` (provided you're using `\n` newlines).
+
+```ruby
+def on_embdoc_beg(value); end
+```
+
+### `embdoc_end`
+
+`embdoc_end` is a scanner event that represents the ending of a multi-line comment.
+
+```ruby
+=begin
+comment
+=end
+```
+
+In the above example, it represents the `=end` string. The handler for this event accepts a single string parameter that always contains `"=end\n"` (provided you're using `\n` newlines).
+
+```ruby
+def on_embdoc_end(value); end
+```
+
+### `embexpr_beg`
+
+`embexpr_beg` is a scanner event that represents the beginning token for using interpolation inside of a parent node that accepts string content (like a string or regular expression).
+
+```ruby
+"Hello, #{person}!"
+```
+
+The handler for this event accepts a single string parameter that always contains the string literal `"#{"`.
+
+```ruby
+def on_embexpr_beg(value); end
+```
+
+### `embexpr_end`
+
+`embexpr_end` is a scanner event that represents the ending token for using interpolation inside of a parent node that accepts string content (like a string or regular expression).
+
+```ruby
+"Hello, #{person}!"
+```
+
+The handler for this event accepts a single string parameter that always contains the string literal `"}"`.
+
+```ruby
+def on_embexpr_end(value); end
+```
+
+### `embvar`
+
+`embvar` is a scanner event that represents the use of shorthand interpolation for an instance, class, or global variable into a parent node that accepts string content (like a string or regular expression).
+
+```ruby
+"#@variable"
+```
+
+In the example above, the `#` would be triggering the `embvar` event because it forces `@variable` to be interpolated. The handler for this event accepts a single string parameter that is always the string literal `"#"`.
+
+```ruby
+def on_embvar(value); end
+```
+
+Note that changing the return value of this method does not impact other event handlers since the result never gets passed up the tree.
+
+### `ensure`
+
+`ensure` is a parser event that represents the use of the `ensure` keyword and its subsequent statements.
+
+```ruby
+begin
+ensure
+end
+```
+
+The handler for this event accepts a single [stmts_add](#stmts_add) event that represents the statements inside the `ensure` clause.
+
+```ruby
+def on_ensure(stmts_add); end
+```
+
+### `excessed_comma`
+
+`excessed_comma` is a parser event that represents a trailing comma in a list of block parameters. It changes the block parameters such that they will destructure.
+
+```ruby
+[[1, 2, 3], [2, 3, 4]].each do |first, second,|
+end
+```
+
+In the above example, an `excessed_comma` node would appear in the third position of the [params](#params) node that is used to declare that block. The third position typically represents a `rest`-type parameter, but in this case is used to indicate that a trailing comma was used. The handler for this event accepts no parameters (though in previous versions of Ruby it accepted a string literal with a value of `","`).
+
+```ruby
+def on_excessed_comma; end
+```
+
+### `fcall`
+
+`fcall` is a parser event that represents the piece of a method call that comes before any arguments (i.e., just the name of the method). It is used in places where the parser is sure that it _is_ a method call and not potentially a local variable.
+
+```ruby
+method(argument)
+```
+
+In the above example, it's referring to the `method` segment. The handler for this event accepts a single [ident](#ident) or [const](#const) parameter that represents the name of the message being sent.
+
+```ruby
+def on_fcall(message); end
+```
 
 <!--
-export type ConstPathField = ParserEvent<"const_path_field", { body: [ConstPathRef | Paren | TopConstRef | VarRef, Const] }>;
-export type ConstPathRef = ParserEvent<"const_path_ref", { body: [AnyNode, Const] }>;
-export type ConstRef = ParserEvent<"const_ref", { body: [Const] }>;
-export type Def = ParserEvent<"def", { body: [Backtick | Const | Identifier | Keyword | Op, Params | Paren, Bodystmt] }>;
-export type Defined = ParserEvent<"defined", { body: [AnyNode] }>;
-export type Defs = ParserEvent<"defs", { body: [AnyNode, Op | Period, Const | Op | Identifier | Keyword, Params | Paren, Bodystmt] }>;
-export type Defsl = ParserEvent<"defsl", { body: [Identifier, null | ParenAroundParams, AnyNode] }>;
-export type DoBlock = ParserEvent<"do_block", { body: [null | BlockVar, Bodystmt], beging: Keyword }>;
-export type Dot2 = ParserEvent<"dot2", { body: [AnyNode, null] | [null, AnyNode] | [AnyNode, AnyNode] }>;
-export type Dot3 = ParserEvent<"dot3", { body: [AnyNode, null] | [null, AnyNode] | [AnyNode, AnyNode] }>;
-export type DynaSymbol = ParserEvent<"dyna_symbol", { body: StringContent[], quote: string }>;
-export type END = ParserEvent<"END", { body: [Lbrace, Stmts] }>;
-export type Else = ParserEvent<"else", { body: [Stmts] }>;
-export type Elsif = ParserEvent<"elsif", { body: [AnyNode, Stmts, null | Elsif | Else] }>;
-export type Ensure = ParserEvent<"ensure", { body: [Keyword, Stmts] }>;
-export type ExcessedComma = ParserEvent0<"excessed_comma">;
-export type Fcall = ParserEvent<"fcall", { body: [Const | Identifier] }>;
 export type Field = ParserEvent<"field", { body: [AnyNode, CallOperator, Const | Identifier] }>;
 export type FndPtn = ParserEvent<"fndptn", { body: [null | AnyNode, VarField, AnyNode[], VarField] }>;
 export type For = ParserEvent<"for", { body: [Mlhs | MlhsAddStar | VarField, AnyNode, Stmts] }>;
@@ -1017,504 +1381,6 @@ export type Zsuper = ParserEvent0<"zsuper">;
 type Assignable = ArefField | ConstPathField | Field | TopConstField | VarField;
 type HashContent = AssocNew | AssocSplat;
 type ParenAroundParams = Omit<Paren, "body"> & { body: [Params] };
-
-# const is a scanner event that represents a literal value that _looks like_
-# a constant. This could actually be a reference to a constant. It could also
-# be something that looks like a constant in another context, as in a method
-# call to a capitalized method, a symbol that starts with a capital letter,
-# etc.
-def on_const(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@const,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# A const_path_field is a parser event that is always the child of some
-# kind of assignment. It represents when you're assigning to a constant
-# that is being referenced as a child of another variable. For example:
-#
-#     foo::X = 1
-#
-def on_const_path_field(left, const)
-  {
-    type: :const_path_field,
-    body: [left, const],
-    sl: left[:sl],
-    sc: left[:sc],
-    el: const[:el],
-    ec: const[:ec]
-  }
-end
-
-# A const_path_ref is a parser event that is a very similar to
-# const_path_field except that it is not involved in an assignment. It
-# looks like the following example: foo::Bar, where left is foo and const is
-# Bar.
-def on_const_path_ref(left, const)
-  {
-    type: :const_path_ref,
-    body: [left, const],
-    sl: left[:sl],
-    sc: left[:sc],
-    el: const[:el],
-    ec: const[:ec]
-  }
-end
-
-# A const_ref is a parser event that represents the name of the constant
-# being used in a class or module declaration. In the following example it
-# is the @const scanner event that has the contents of Foo.
-#
-#     class Foo; end
-#
-def on_const_ref(const)
-  const.merge(type: :const_ref, body: [const])
-end
-
-# cvar is a scanner event that represents the use of a class variable.
-def on_cvar(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@cvar,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# A def is a parser event that represents defining a regular method on the
-# current self object. It accepts as arguments the ident (the name of the
-# method being defined), the params (the parameter declaration for the
-# method), and a bodystmt node which represents the statements inside the
-# method. As an example, here are the parts that go into this:
-#
-#     def foo(bar) do baz end
-#          │   │       │
-#          │   │       └> bodystmt
-#          │   └> params
-#          └> ident
-#
-# You can also have single-line methods since Ruby 3.0+, which have slightly
-# different syntax but still flow through this method. Those look like:
-#
-#     def foo = bar
-#          |     |
-#          |     └> stmt
-#          └> ident
-#
-def on_def(ident, params, bodystmt)
-  # Make sure to delete this scanner event in case you're defining something
-  # like def class which would lead to this being a kw and causing all kinds
-  # of trouble
-  scanner_events.delete(ident)
-
-  # Find the beginning of the method definition, which works for single-line
-  # and normal method definitions.
-  beging = find_scanner_event(:@kw, 'def')
-
-  # If we don't have a bodystmt node, then we have a single-line method
-  if bodystmt[:type] != :bodystmt
-    return(
-      {
-        type: :defsl,
-        body: [ident, params, bodystmt],
-        sl: beging[:sl],
-        sc: beging[:sc],
-        el: bodystmt[:el],
-        ec: bodystmt[:ec]
-      }
-    )
-  end
-
-  if params[:type] == :params && !params[:body].any?
-    location = ident[:ec]
-    params.merge!(sc: location, ec: location)
-  end
-
-  ending = find_scanner_event(:@kw, 'end')
-
-  bodystmt.bind(find_next_statement_start(params[:ec]), ending[:sc])
-
-  {
-    type: :def,
-    body: [ident, params, bodystmt],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# A defs is a parser event that represents defining a singleton method on
-# an object. It accepts the same arguments as the def event, as well as
-# the target and operator that on which this method is being defined. As
-# an example, here are the parts that go into this:
-#
-#     def foo.bar(baz) do baz end
-#          │ │ │   │       │
-#          │ │ │   │       │
-#          │ │ │   │       └> bodystmt
-#          │ │ │   └> params
-#          │ │ └> ident
-#          │ └> oper
-#          └> target
-#
-def on_defs(target, oper, ident, params, bodystmt)
-  # Make sure to delete this scanner event in case you're defining something
-  # like def class which would lead to this being a kw and causing all kinds
-  # of trouble
-  scanner_events.delete(ident)
-
-  if params[:type] == :params && !params[:body].any?
-    location = ident[:ec]
-    params.merge!(sc: location, ec: location)
-  end
-
-  beging = find_scanner_event(:@kw, 'def')
-  ending = find_scanner_event(:@kw, 'end')
-
-  bodystmt.bind(find_next_statement_start(params[:ec]), ending[:sc])
-
-  {
-    type: :defs,
-    body: [target, oper, ident, params, bodystmt],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# A defined node represents the rather unique defined? operator. It can be
-# used with and without parentheses. If they're present, we use them to
-# determine our bounds, otherwise we use the value that's being passed to
-# the operator.
-def on_defined(value)
-  beging = find_scanner_event(:@kw, 'defined?')
-
-  paren = source[beging[:ec]...value[:sc]].include?('(')
-  ending = paren ? find_scanner_event(:@rparen) : value
-
-  beging.merge!(
-    type: :defined,
-    body: [value],
-    el: ending[:el],
-    ec: ending[:ec]
-  )
-end
-
-# do_block is a parser event that represents passing a block to a method
-# call using the do..end keywords. It accepts as arguments an optional
-# block_var event that represents any parameters to the block as well as
-# a bodystmt event that represents the statements inside the block.
-def on_do_block(block_var, bodystmt)
-  beging = find_scanner_event(:@kw, 'do')
-  ending = find_scanner_event(:@kw, 'end')
-
-  bodystmt.bind(
-    find_next_statement_start((block_var || beging)[:ec]),
-    ending[:sc]
-  )
-
-  {
-    type: :do_block,
-    body: [block_var, bodystmt],
-    beging: beging,
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# dot2 is a parser event that represents using the .. operator between two
-# expressions. Usually this is to create a range object but sometimes it's to
-# use the flip-flop operator.
-def on_dot2(left, right)
-  operator = find_scanner_event(:@op, '..')
-
-  beging = left || operator
-  ending = right || operator
-
-  {
-    type: :dot2,
-    body: [left, right],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# dot3 is a parser event that represents using the ... operator between two
-# expressions. Usually this is to create a range object but sometimes it's to
-# use the flip-flop operator.
-def on_dot3(left, right)
-  operator = find_scanner_event(:@op, '...')
-
-  beging = left || operator
-  ending = right || operator
-
-  {
-    type: :dot3,
-    body: [left, right],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# A dyna_symbol is a parser event that represents a symbol literal that
-# uses quotes to interpolate its value. For example, if you had a variable
-# foo and you wanted a symbol that contained its value, you would write:
-#
-#     :"#{foo}"
-#
-# As such, they accept as one argument a string node, which is the same
-# node that gets accepted into a string_literal (since we're basically
-# talking about a string literal with a : character at the beginning).
-#
-# They can also come in another flavor which is a dynamic symbol as a hash
-# key. This is kind of an interesting syntax which results in us having to
-# look for a @label_end scanner event instead to get our bearings. That
-# kind of code would look like:
-#
-#     { "#{foo}": bar }
-#
-# which would be the same symbol as above.
-def on_dyna_symbol(string)
-  if find_scanner_event(:@symbeg, consume: false)
-    # A normal dynamic symbol
-    beging = find_scanner_event(:@symbeg)
-    ending = find_scanner_event(:@tstring_end)
-
-    beging.merge(
-      type: :dyna_symbol,
-      quote: beging[:body],
-      body: string[:body],
-      el: ending[:el],
-      ec: ending[:ec]
-    )
-  else
-    # A dynamic symbol as a hash key
-    beging = find_scanner_event(:@tstring_beg)
-    ending = find_scanner_event(:@label_end)
-
-    string.merge!(
-      type: :dyna_symbol,
-      quote: ending[:body][0],
-      sl: beging[:sl],
-      sc: beging[:sc],
-      el: ending[:el],
-      ec: ending[:ec]
-    )
-  end
-end
-
-# else is a parser event that represents the end of a if, unless, or begin
-# chain. It accepts as an argument the statements that are contained
-# within the else clause.
-def on_else(stmts)
-  beging = find_scanner_event(:@kw, 'else')
-
-  # else can either end with an end keyword (in which case we'll want to
-  # consume that event) or it can end with an ensure keyword (in which case
-  # we'll leave that to the ensure to handle).
-  index =
-    scanner_events.rindex do |event|
-      event[:type] == :@kw && %w[end ensure].include?(event[:body])
-    end
-
-  event = scanner_events[index]
-  ending = event[:body] == 'end' ? scanner_events.delete_at(index) : event
-
-  stmts.bind(beging[:ec], ending[:sc])
-
-  {
-    type: :else,
-    body: [stmts],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# elsif is a parser event that represents another clause in an if chain.
-# It accepts as arguments the predicate of the else if, the statements
-# that are contained within the else if clause, and the optional
-# consequent clause.
-def on_elsif(predicate, stmts, consequent)
-  beging = find_scanner_event(:@kw, 'elsif')
-  ending = consequent || find_scanner_event(:@kw, 'end')
-
-  stmts.bind(predicate[:ec], ending[:sc])
-
-  {
-    type: :elsif,
-    body: [predicate, stmts, consequent],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# This is a scanner event that gets hit when we're inside an embdoc and
-# receive a new line of content. Here we are guaranteed to already have
-# initialized the @embdoc variable so we can just append the new line onto
-# the existing content.
-def on_embdoc(value)
-  @embdoc[:value] << value
-end
-
-# embdocs are long comments that are surrounded by =begin..=end. They
-# cannot be nested, so we don't need to worry about keeping a stack around
-# like we do with heredocs. Instead we can just track the current embdoc
-# and add to it as we get content. It always starts with this scanner
-# event, so here we'll initialize the current embdoc.
-def on_embdoc_beg(value)
-  @embdoc = { type: :@embdoc, value: value, sl: lineno, sc: char_pos }
-end
-
-# This is the final scanner event for embdocs. It receives the =end. Here
-# we can finalize the embdoc with its location information and the final
-# piece of the string. We then add it to the list of comments so that
-# prettier can place it into the final source string.
-def on_embdoc_end(value)
-  @comments <<
-    @embdoc.merge!(
-      value: @embdoc[:value] << value.chomp,
-      el: lineno,
-      ec: char_pos + value.length - 1
-    )
-
-  @embdoc = nil
-end
-
-# embexpr_beg is a scanner event that represents using interpolation inside of
-# a string, xstring, heredoc, or regexp. Its value is the string literal "#{".
-def on_embexpr_beg(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@embexpr_beg,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# embexpr_end is a scanner event that represents the end of an interpolated
-# expression in a string, xstring, heredoc, or regexp. Its value is the string
-# literal "}".
-def on_embexpr_end(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@embexpr_end,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# embvar is a scanner event that represents the use of shorthand interpolation
-# for an instance, class, or global variable into a string, xstring, heredoc,
-# or regexp. Its value is the string literal "#". For example, in the
-# following snippet:
-#
-#     "#@foo"
-#
-# the embvar would be triggered by the "#", then an ivar event for the @foo
-# instance variable. That would all get bound up into a string_dvar node in
-# the final AST.
-def on_embvar(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@embvar,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# ensure is a parser event that represents the use of the ensure keyword
-# and its subsequent statements.
-def on_ensure(stmts)
-  beging = find_scanner_event(:@kw, 'ensure')
-
-  # Specifically not using find_scanner_event here because we don't want to
-  # consume the :@end event, because that would break def..ensure..end chains.
-  index =
-    scanner_events.rindex do |scanner_event|
-      scanner_event[:type] == :@kw && scanner_event[:body] == 'end'
-    end
-
-  ending = scanner_events[index]
-  stmts.bind(find_next_statement_start(beging[:ec]), ending[:sc])
-
-  {
-    type: :ensure,
-    body: [beging, stmts],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# An excessed_comma is a special kind of parser event that represents a comma
-# at the end of a list of parameters. It's a very strange node. It accepts a
-# different number of arguments depending on Ruby version, which is why we
-# have the anonymous splat there.
-def on_excessed_comma(*)
-  find_scanner_event(:@comma).merge!(type: :excessed_comma)
-end
-
-# An fcall is a parser event that represents the piece of a method call
-# that comes before any arguments (i.e., just the name of the method).
-def on_fcall(ident)
-  ident.merge(type: :fcall, body: [ident])
-end
 
 # A field is a parser event that is always the child of an assignment. It
 # accepts as arguments the left side of operation, the operator (. or ::),
