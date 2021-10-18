@@ -810,6 +810,12 @@ else
 end
 ```
 
+`case` will also get dispatched when using the `in` keyword on a single line, as in:
+
+```ruby
+value in pattern
+```
+
 The handler for this event accepts two parameters: the optional value that is being used as the predicate for the `case` chain, and the consequent clause (a [when](#when) or [in](#in) clause).
 
 ```ruby
@@ -1499,11 +1505,253 @@ The handler for this event accepts three parameters. The first is the predicate 
 def on_ifop(predicate, truthy, falsy); end
 ```
 
+### `if_mod`
+
+`if_mod` is a parser event that represents the modifier form of an `if` statement.
+
+```ruby
+value if predicate
+```
+
+The handler for this event accepts two parameters. The first is the predicate for the `if` clause. The second is the statement being executed if the predicate is truthy. Both of the parameters can be any Ruby expression.
+
+```ruby
+def on_if_mod(predicate, statement); end
+```
+
+### `ignored_nl`
+
+`ignored_nl` is a scanner event that represents a newline in the middle of a statement where it should be ignored. For example:
+
+```ruby
+object.first
+      .second
+```
+
+The `ignored_nl` event will get triggered on the newline between the first and second method calls. The handler for this event accepts a single parameter that is always `nil`.
+
+```ruby
+def on_ignored_nl(value); end
+```
+
+### `ignored_sp`
+
+`ignored_sp` is a scanner event that represents the space before the content of each line of a squiggly heredoc that will be removed from the string before it gets transformed into a string literal. For example:
+
+```ruby
+<<~DOC
+  line1
+    line2
+DOC
+```
+
+In the above snippet, two `ignored_sp` event would be dispatched. The first would be dispatched with two spaces and the second with four.
+
+```ruby
+def on_ignored_sp(value); end
+```
+
+### `imaginary`
+
+`imaginary` is a scanner event that represents an imaginary number literal.
+
+```ruby
+1i
+```
+
+The handler for this event accepts a single string parameter that represents the value as seen in the source.
+
+```ruby
+def on_imaginary(value); end
+```
+
+### `in`
+
+`in` is a parser event that represents using the `in` keyword within the Ruby 2.7+ pattern matching syntax.
+
+```ruby
+case value
+in pattern
+end
+```
+
+Alternatively, in Ruby 3+ it is also used to handle rightward assignment for pattern matching.
+
+```ruby
+value in pattern
+```
+
+The handler for this event accepts three parameters. The first is the pattern that is being matched, which can be any Ruby expression. The second is a [stmts_add](#stmts_add) node that represents the statements inside the `in` clause. The final is an optional consequent clause that follows this `in` clause, which can be either an `in` or [else](#else).
+
+Note that for a single-line rightward pattern matching like the second example, both of the second two parameters to this event handler will be `nil`.
+
+```ruby
+def on_in(pattern, stmts_add, consequent); end
+```
+
+### `int`
+
+`int` is a scanner event the represents a number literal.
+
+```ruby
+1
+```
+
+The handler for this event accepts a single string parameter that represents the value as seen in the source.
+
+```ruby
+def on_int(value); end
+```
+
+### `ivar`
+
+`ivar` is a scanner event the represents an instance variable literal.
+
+```ruby
+@variable
+```
+
+The handler for this event accepts a single string parameter that represents the value as seen in the source, including the `@` prefix.
+
+```ruby
+def on_ivar(value); end
+```
+
+### `kw`
+
+`kw` is a scanner event the represents the use of a keyword. It can be almost anywhere in the syntax tree, so you end up seeing it quite a lot.
+
+```ruby
+if value
+end
+```
+
+In the above example, `kw` would be dispatched twice: once for the `if` and once for the `end`. Note that anything that matches the list of keywords in Ruby will dispatch this event, so if you use a keyword in a symbol literal for instance:
+
+```ruby
+:if
+```
+
+then the contents of the [symbol](#symbol) node will contain a `kw` node. The handler for this event accepts a single string parameter that represents the value as seen in the source.
+
+```ruby
+def on_kw(value); end
+```
+
+### `kwrest_param`
+
+`kwrest_param` is a parser event that represents defining a parameter in a method definition that accepts all remaining keyword parameters.
+
+```ruby
+def method(**kwargs); end
+```
+
+The handler for this event accepts a single optional [ident](#ident) node that represents the name of the parameter.
+
+```ruby
+def on_kwrest_param(ident); end
+```
+
+### `label`
+
+`label` is a scanner event that represents the use of an identifier to associate with an object. You can find it in a hash key, as in:
+
+```ruby
+{ key: value }
+```
+
+In this case `"key:"` would be the body of the label. You can also find it in pattern matching, as in:
+
+```ruby
+case value
+in key:
+end
+```
+
+In this case `"key:"` would be the body of the label.
+
+The handler for this event accepts a single string parameter that represents the value as seen in the source, including the `:` suffix.
+
+```ruby
+def on_label(value); end
+```
+
+### `label_end`
+
+`label_end` is a scanner event that represents the end of a dynamic symbol. If for example you had the following hash:
+
+```ruby
+{ "key": value }
+```
+
+then the string `"\":"` would be the value of this `label_end`. The handler for this event accepts a single string parameter that represents the value as seen in the source. It's particularly useful for determining the type of quote being used by the label.
+
+```ruby
+def on_label_end(value); end
+```
+
+### `lambda`
+
+`lambda` is a parser event that represents using a lambda literal (_not_ the `lambda` method call).
+
+```ruby
+->(value) { value * 2 }
+```
+
+The handler for this event accepts parameters a [params](#params) node (which can be a [paren](#paren) node if parentheses are used) that represents any parameters to the lambda and a statements node ([stmts_add](#stmts_add) for a lambda using braces and [bodystmt](#bodystmt) for a lambda using the `do` and `end` keywords) that represents the statements inside the lambda.
+
+```ruby
+def on_lambda(params, stmts); end
+```
+
+### `lbrace`
+
+`lbrace` is a scanner event representing the use of a left brace, i.e., `{`.
+
+The handler for this event accepts a single string parameter that is always `"{"`.
+
+```ruby
+def on_lbrace(value); end
+```
+
+### `lbracket`
+
+`lbracket` is a scanner event representing the use of a left bracket, i.e., `[`.
+
+The handler for this event accepts a single string parameter that is always `"["`.
+
+```ruby
+def on_lbracket(value); end
+```
+
+### `lparen`
+
+`lparen` is a scanner event representing the use of a left parenthesis, i.e., `(`.
+
+The handler for this event accepts a single string parameter that is always `"("`.
+
+```ruby
+def on_lparen(value); end
+```
+
+### `magic_comment`
+
+`magic_comment` is a scanner event that represents the use of a pragma at the beginning of the file. Usually it will include something like
+`frozen_string_literal` (the key) with a value of `true` (the value). It can also take multiple other forms though if using the `-*-` emacs-style file pragmas. Note that it's not just known values that dispatch this event, anything that matches a specific pattern will as well.
+
+```ruby
+# frozen_string_literal: true
+```
+
+The handler for this event accepts two parameters, the key and value. They both come in as string literals.
+
+```ruby
+def on_magic_comment(key, value); end
+```
+
+Note that the return value of this method will be passed immediately up into the [comment](#comment) event handler. So it is possible to skip this handler definition entirely and just process it in the comments handler.
+
 <!--
-export type IfModifier = ParserEvent<"if_mod", { body: [AnyNode, AnyNode] }>;
-export type In = ParserEvent<"in", { body: [AnyNode, Stmts, null | In | Else] }>;
-export type KeywordRestParam = ParserEvent<"kwrest_param", { body: [null | Identifier] }>;
-export type Lambda = ParserEvent<"lambda", { body: [Params | ParenAroundParams, Bodystmt | Stmts] }>;
 export type Massign = ParserEvent<"massign", { body: [Mlhs | MlhsAddPost | MlhsAddStar | MlhsParen, AnyNode] }>;
 export type MethodAddArg = ParserEvent<"method_add_arg", { body: [Call | Fcall, Args | ArgParen | ArgsAddBlock] }>;
 export type MethodAddBlock = ParserEvent<"method_add_block", { body: [AnyNode, BraceBlock | DoBlock] }>;
@@ -1570,312 +1818,6 @@ export type Zsuper = ParserEvent0<"zsuper">;
 type Assignable = ArefField | ConstPathField | Field | TopConstField | VarField;
 type HashContent = AssocNew | AssocSplat;
 type ParenAroundParams = Omit<Paren, "body"> & { body: [Params] };
-
-# if_mod is a parser event that represents the modifier form of an if
-# statement. It accepts as arguments the predicate of the if and the
-# statement that are contained within the if clause.
-def on_if_mod(predicate, statement)
-  find_scanner_event(:@kw, 'if')
-
-  {
-    type: :if_mod,
-    body: [predicate, statement],
-    sl: statement[:sl],
-    sc: statement[:sc],
-    el: predicate[:el],
-    ec: predicate[:ec]
-  }
-end
-
-# ignored_nl is a special kind of scanner event that passes nil as the value.
-# You can trigger the ignored_nl event with the following snippet:
-#
-#     foo.bar
-#        .baz
-#
-# We don't need to track this event in the AST that we're generating, so we're
-# not going to define an explicit handler for it.
-#
-#     def on_ignored_nl(value)
-#       value
-#     end
-
-# ignored_sp is a scanner event that represents the space before the content
-# of each line of a squiggly heredoc that will be removed from the string
-# before it gets transformed into a string literal. For example, in the
-# following snippet:
-#
-#     <<~HERE
-#       foo
-#         bar
-#     HERE
-#
-# You would have two ignored_sp events, the first with two spaces and the
-# second with four. We don't need to track this event in the AST that we're
-# generating, so we're not going to define an explicit handler for it.
-#
-#     def on_ignored_sp(value)
-#       value
-#     end
-
-# imaginary is a scanner event that represents an imaginary number literal.
-# They become instances of the Complex class.
-def on_imaginary(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@imaginary,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# in is a parser event that represents using the in keyword within the
-# Ruby 2.7+ pattern matching syntax. Alternatively in Ruby 3+ it is also used
-# to handle rightward assignment for pattern matching.
-def on_in(pattern, stmts, consequent)
-  # Here we have a rightward assignment
-  return pattern unless stmts
-
-  beging = find_scanner_event(:@kw, 'in')
-  ending = consequent || find_scanner_event(:@kw, 'end')
-
-  stmts.bind(beging[:ec], ending[:sc])
-
-  beging.merge!(
-    type: :in,
-    body: [pattern, stmts, consequent],
-    el: ending[:el],
-    ec: ending[:ec]
-  )
-end
-
-# int is a scanner event the represents a number literal.
-def on_int(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@int,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# ivar is a scanner event the represents an instance variable literal.
-def on_ivar(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@ivar,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# kw is a scanner event the represents the use of a keyword. It can be
-# anywhere in the AST, so you end up seeing it quite a lot.
-def on_kw(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@kw,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# kwrest_param is a parser event that represents defining a parameter in a
-# method definition that accepts all remaining keyword parameters.
-def on_kwrest_param(ident)
-  oper = find_scanner_event(:@op, '**')
-  return oper.merge!(type: :kwrest_param, body: [nil]) unless ident
-
-  oper.merge!(
-    type: :kwrest_param,
-    body: [ident],
-    el: ident[:el],
-    ec: ident[:ec]
-  )
-end
-
-# label is a scanner event that represents the use of an identifier to
-# associate with an object. You can find it in a hash key, as in:
-#
-#     { foo: bar }
-#
-# in this case "foo:" would be the body of the label. You can also find it in
-# pattern matching, as in:
-#
-#     case foo
-#     in bar:
-#       bar
-#     end
-#
-# in this case "bar:" would be the body of the label.
-def on_label(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@label,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# label_end is a scanner event that represents the end of a dynamic symbol. If
-# for example you had the following hash:
-#
-#     { "foo": bar }
-#
-# then the string "\":" would be the value of this label_end. It's useful for
-# determining the type of quote being used by the label.
-def on_label_end(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@label_end,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# lambda is a parser event that represents using a "stabby" lambda
-# literal. It accepts as arguments a params event that represents any
-# parameters to the lambda and a stmts event that represents the
-# statements inside the lambda.
-#
-# It can be wrapped in either {..} or do..end so we look for either of
-# those combinations to get our bounds.
-def on_lambda(params, stmts)
-  beging = find_scanner_event(:@tlambda)
-
-  if event = find_scanner_event(:@tlambeg, consume: false)
-    opening = scanner_events.delete(event)
-    closing = find_scanner_event(:@rbrace)
-  else
-    opening = find_scanner_event(:@kw, 'do')
-    closing = find_scanner_event(:@kw, 'end')
-  end
-
-  stmts.bind(opening[:ec], closing[:sc])
-
-  {
-    type: :lambda,
-    body: [params, stmts],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: closing[:el],
-    ec: closing[:ec]
-  }
-end
-
-# lbrace is a scanner event representing the use of a left brace, i.e., "{".
-def on_lbrace(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@lbrace,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# lbracket is a scanner event representing the use of a left bracket, i.e.,
-# "[".
-def on_lbracket(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@lbracket,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# lparen is a scanner event representing the use of a left parenthesis, i.e.,
-# "(".
-def on_lparen(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@lparen,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# magic_comment is a scanner event that represents the use of a pragma at the
-# beginning of the file. Usually it will inside something like
-# frozen_string_literal (the key) with a value of true (the value). Both
-# children come is a string literals. We're going to leave these alone as they
-# come in all kinds of shapes and sizes.
-#
-#     def on_magic_comment(key, value)
-#       @magic_comment = { value: " #{key}: #{value}" }
-#     end
 
 # massign is a parser event that is a parent node of any kind of multiple
 # assignment. This includes splitting out variables on the left like:
