@@ -1303,8 +1303,35 @@ In the above example, it's referring to the `method` segment. The handler for th
 def on_fcall(message); end
 ```
 
+### `field`
+
+`field` is a parser event that is always the child of an assignment. It represents assigning to a "field" on an object, as in:
+
+```ruby
+object.variable = value
+```
+
+The handler for this event accepts three parameters. The first is everything to the left of the operator (the object owning the field, can be any Ruby expression), the second is the operator itself (a [period](#period) for `.`, an [op](#op) for `&.`, or the symbol literal `:"::"` for `::`), and the third is everything to the right of the operator (the name of the field being assigned, either a [const](#const) or [ident](#ident) node).
+
+```ruby
+def on_field(left, operator, right); end
+```
+
+### `float`
+
+`float` is a scanner event that represents a floating point value literal.
+
+```ruby
+1.0
+```
+
+The handler for this event accepts a single string parameter that represents the float's value in string form.
+
+```ruby
+def on_float(value); end
+```
+
 <!--
-export type Field = ParserEvent<"field", { body: [AnyNode, CallOperator, Const | Identifier] }>;
 export type FndPtn = ParserEvent<"fndptn", { body: [null | AnyNode, VarField, AnyNode[], VarField] }>;
 export type For = ParserEvent<"for", { body: [Mlhs | MlhsAddStar | VarField, AnyNode, Stmts] }>;
 export type Hash = ParserEvent<"hash", { body: [null | AssoclistFromArgs] }>;
@@ -1381,41 +1408,6 @@ export type Zsuper = ParserEvent0<"zsuper">;
 type Assignable = ArefField | ConstPathField | Field | TopConstField | VarField;
 type HashContent = AssocNew | AssocSplat;
 type ParenAroundParams = Omit<Paren, "body"> & { body: [Params] };
-
-# A field is a parser event that is always the child of an assignment. It
-# accepts as arguments the left side of operation, the operator (. or ::),
-# and the right side of the operation. For example:
-#
-#     foo.x = 1
-#
-def on_field(left, oper, right)
-  {
-    type: :field,
-    body: [left, oper, right],
-    sl: left[:sl],
-    sc: left[:sc],
-    el: right[:el],
-    ec: right[:ec]
-  }
-end
-
-# float is a scanner event that represents a floating point value literal.
-def on_float(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@float,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
 
 # fndptn is a parser event that represents matching against a pattern where
 # you find a pattern in an array using the Ruby 3.0+ pattern matching syntax.
