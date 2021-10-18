@@ -1331,13 +1331,175 @@ The handler for this event accepts a single string parameter that represents the
 def on_float(value); end
 ```
 
+### `fndptn`
+
+`fndptn` is a parser event that represents matching against a pattern where you find a pattern in an array using the Ruby 3.0+ pattern matching syntax.
+
+```ruby
+case value
+in [*, 7, *]
+end
+```
+
+In the above example, the syntax means it will match an array that contains a `7` integer literal.
+
+The handler for this event accepts four parameters. The first is an optional constant wrapper like [aryptn](#aryptn). The second is a [var_field](#var_field) that represents the first `*` operator and its optional name. The third is any array of Ruby expressions that represent all of the values in the array between the two `*` operators. The fourth and final parameter is another [var_field](#var_field) that represents the second `*` operator and its optional name.
+
+```ruby
+def on_fndptn(const, presplat, values, postsplat); end
+```
+
+### `for`
+
+`for` is a parser event that represents using a for loop.
+
+```ruby
+for value in list do
+end
+```
+
+The handler for this event accepts three parameters. The first represents the list of iteration parameters. It can be an [mlhs](#mlhs), an [mlhs_add_star](#mlhs_add_star), or a [var_field](#var_field) node, depending on the kind of iteration. The second is the Ruby expression that represents the value being iterated. The third and final parameter is a [stmts_add](#stmts_add) node that represents the list of statements inside the for loop.
+
+```ruby
+def on_for(iterator, enumerable, stmts_add); end
+```
+
+### `gvar`
+
+`gvar` is a scanner event that represents a global variable literal.
+
+```ruby
+$variable
+```
+
+The handler for this event accepts a single string value that represents the variable including the `$` prefix.
+
+```ruby
+def on_gvar(value); end
+```
+
+### `hash`
+
+`hash` is a parser event that represents a hash literal.
+
+```ruby
+{ key => value }
+```
+
+The handler for this event accepts a single optional [assoclist_from_args](#assoclist_from_args) parameter that represents the contents of the hash literal. If the hash literal is empty, this parameter will be `nil`.
+
+```ruby
+def on_hash(assoclist_from_args); end
+```
+
+### `heredoc_beg`
+
+`heredoc_beg` is a scanner event that represents the beginning of the heredoc.
+
+```ruby
+<<~DOC
+  contents
+DOC
+```
+
+In the above example, a `heredoc_beg` would get dispatched containing the `"<<~DOC"` string literal. The handler for this event accepts a single string parameter that represents the beginning declaration of the heredoc.
+
+```ruby
+def on_heredoc_beg(value); end
+```
+
+### `heredoc_dedent`
+
+`heredoc_dedent` is a parser event that occurs when you're using a heredoc with a tilde (otherwise known as a "squiggly" heredoc).
+
+```ruby
+<<~DOC
+  contents
+DOC
+```
+
+This event will get dispatched once when the `heredoc` is closed. The handler for this event accepts two parameters. The first is the content of the heredoc, represented with a [string_add](#string_add) node. The second is an integer that represents the number of characters that should be stripped off from the beginning of each line of the heredoc (because of the semantics of the tilde in the declaration).
+
+```ruby
+def on_heredoc_dedent(string_add, width); end
+```
+
+### `heredoc_end`
+
+`heredoc_end` is a scanner event that represents the end of the heredoc literal.
+
+```ruby
+<<~DOC
+  contents
+DOC
+```
+
+The handler for this event accepts a single string parameter that represents the end of the heredoc declaration. In the above example it would be the string literal `"DOC\n"` (provided you're using `\n` newlines).
+
+```ruby
+def on_heredoc_end(value); end
+```
+
+### `hshptn`
+
+`hshptn` is a parser event that represents matching against a hash pattern using the Ruby 2.7+ pattern matching syntax.
+
+```ruby
+case value
+in { key: }
+end
+```
+
+The handler for this event accepts three parameters. The first is an optional constant wrapper, like [aryptn](#aryptn) and [fndptn](#fndptn). The second is an array of pairs of [label](#label) and an optional Ruby expression node for the value. Those pairs represent the key-value pairs used in the pattern matching. In the example above, it would contain a single pair of the `key` label and `nil` for the value. The third and final parameter is a [var_field](#var_field) that represents the optional double splat for grabbing the remaining keys.
+
+```ruby
+def on_hshptn(const, pairs, kwrest); end
+```
+
+### `ident`
+
+`ident` is a scanner event that represents an identifier anywhere in code. It can represent a very large number of things, depending on where it is in the syntax tree.
+
+```ruby
+value
+```
+
+The handler for this event accepts a single string parameter representing the value in the source.
+
+```ruby
+def on_ident(value); end
+```
+
+### `if`
+
+`if` is a parser event that represents the first clause in an `if` chain.
+
+```ruby
+if predicate
+end
+```
+
+The handler for this event accepts three parameters. The first is any Ruby expression that represents the predicate used in the `if` clause. The second is a [stmts_add](#stmts_add) node that represent the statements inside the clause. The third and final parameter is an optional consequent clause the follows the `if` which can be an [elsif](#elsif) or [else](#else) clause.
+
+```ruby
+def on_if(predicate, stmts_add, consequent); end
+```
+
+### `ifop`
+
+`ifop` is a parser event that represents a ternary clause.
+
+```ruby
+predicate ? truthy : falsy
+```
+
+The handler for this event accepts three parameters. The first is the predicate used in the ternary. The second is the value used in the truthy case. The third is the value used in the falsy case. All three parameters can be any Ruby expression.
+
+```ruby
+def on_ifop(predicate, truthy, falsy); end
+```
+
 <!--
-export type FndPtn = ParserEvent<"fndptn", { body: [null | AnyNode, VarField, AnyNode[], VarField] }>;
-export type For = ParserEvent<"for", { body: [Mlhs | MlhsAddStar | VarField, AnyNode, Stmts] }>;
-export type Hash = ParserEvent<"hash", { body: [null | AssoclistFromArgs] }>;
-export type Heredoc = ParserEvent<"heredoc", { beging: HeredocBegin, ending: string, body: StringContent[] }>;
-export type Hshptn = ParserEvent<"hshptn", { body: [null | AnyNode, [Label, AnyNode][], null | VarField] }>;
-export type If = ParserEvent<"if", { body: [AnyNode, Stmts, null | Elsif | Else] }>;
 export type IfModifier = ParserEvent<"if_mod", { body: [AnyNode, AnyNode] }>;
 export type In = ParserEvent<"in", { body: [AnyNode, Stmts, null | In | Else] }>;
 export type KeywordRestParam = ParserEvent<"kwrest_param", { body: [null | Identifier] }>;
@@ -1408,193 +1570,6 @@ export type Zsuper = ParserEvent0<"zsuper">;
 type Assignable = ArefField | ConstPathField | Field | TopConstField | VarField;
 type HashContent = AssocNew | AssocSplat;
 type ParenAroundParams = Omit<Paren, "body"> & { body: [Params] };
-
-# fndptn is a parser event that represents matching against a pattern where
-# you find a pattern in an array using the Ruby 3.0+ pattern matching syntax.
-def on_fndptn(const, presplat, args, postsplat)
-  beging = const || find_scanner_event(:@lbracket)
-  ending = find_scanner_event(:@rbracket)
-
-  {
-    type: :fndptn,
-    body: [const, presplat, args, postsplat],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# for is a parser event that represents using the somewhat esoteric for
-# loop. It accepts as arguments an ident which is the iterating variable,
-# an enumerable for that which is being enumerated, and a stmts event that
-# represents the statements inside the for loop.
-def on_for(ident, enum, stmts)
-  beging = find_scanner_event(:@kw, 'for')
-  ending = find_scanner_event(:@kw, 'end')
-
-  # Consume the do keyword if it exists so that it doesn't get confused for
-  # some other block
-  do_event = find_scanner_event(:@kw, 'do', consume: false)
-  if do_event && do_event[:sc] > enum[:ec] && do_event[:ec] < ending[:sc]
-    scanner_events.delete(do_event)
-  end
-
-  stmts.bind((do_event || enum)[:ec], ending[:sc])
-
-  {
-    type: :for,
-    body: [ident, enum, stmts],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# gvar is a scanner event that represents a global variable literal.
-def on_gvar(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@gvar,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# hash is a parser event that represents a hash literal. It accepts as an
-# argument an optional assoclist_from_args event which contains the
-# contents of the hash.
-def on_hash(assoclist_from_args)
-  beging = find_scanner_event(:@lbrace)
-  ending = find_scanner_event(:@rbrace)
-
-  if assoclist_from_args
-    # Here we're going to expand out the location information for the assocs
-    # node so that it can grab up any remaining comments inside the hash.
-    assoclist_from_args.merge!(sc: beging[:ec], ec: ending[:sc])
-  end
-
-  {
-    type: :hash,
-    body: [assoclist_from_args],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# This is a scanner event that represents the beginning of the heredoc. It
-# includes the declaration (which we call beging here, which is just short
-# for beginning). The declaration looks something like <<-HERE or <<~HERE.
-# If the downcased version of the declaration actually matches an existing
-# prettier parser, we'll later attempt to print it using that parser and
-# printer through our embed function.
-def on_heredoc_beg(beging)
-  location = {
-    sl: lineno,
-    el: lineno,
-    sc: char_pos,
-    ec: char_pos + beging.length + 1
-  }
-
-  # Here we're going to artificially create an extra node type so that if
-  # there are comments after the declaration of a heredoc, they get printed.
-  location
-    .merge(
-      type: :heredoc,
-      beging: location.merge(type: :@heredoc_beg, body: beging)
-    )
-    .tap { |node| @heredocs << node }
-end
-
-# This is a parser event that occurs when you're using a heredoc with a
-# tilde. These are considered `heredoc_dedent` nodes, whereas the hyphen
-# heredocs show up as string literals.
-def on_heredoc_dedent(string, _width)
-  @heredocs[-1].merge!(body: string[:body])
-end
-
-# This is a scanner event that represents the end of the heredoc.
-def on_heredoc_end(ending)
-  @heredocs[-1].merge!(ending: ending.chomp, el: lineno, ec: char_pos)
-end
-
-# hshptn is a parser event that represents matching against a hash pattern
-# using the Ruby 2.7+ pattern matching syntax.
-def on_hshptn(const, kw, kwrest)
-  pieces = [const, kw, kwrest].flatten(2).compact
-
-  {
-    type: :hshptn,
-    body: [const, kw, kwrest],
-    sl: pieces[0][:sl],
-    sc: pieces[0][:sc],
-    el: pieces[-1][:el],
-    ec: pieces[-1][:ec]
-  }
-end
-
-# ident is a scanner event that represents an identifier anywhere in code. It
-# can actually represent a whole bunch of stuff, depending on where it is in
-# the AST. Like comments, we need to force the encoding here so JSON doesn't
-# break.
-def on_ident(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@ident,
-    body: value.force_encoding('UTF-8'),
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# if is a parser event that represents the first clause in an if chain.
-# It accepts as arguments the predicate of the if, the statements that are
-# contained within the if clause, and the optional consequent clause.
-def on_if(predicate, stmts, consequent)
-  beging = find_scanner_event(:@kw, 'if')
-  ending = consequent || find_scanner_event(:@kw, 'end')
-
-  stmts.bind(predicate[:ec], ending[:sc])
-
-  {
-    type: :if,
-    body: [predicate, stmts, consequent],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# ifop is a parser event that represents a ternary operator. It accepts as
-# arguments the predicate to the ternary, the truthy clause, and the falsy
-# clause.
-def on_ifop(predicate, truthy, falsy)
-  predicate.merge(
-    type: :ifop,
-    body: [predicate, truthy, falsy],
-    el: falsy[:el],
-    ec: falsy[:ec]
-  )
-end
 
 # if_mod is a parser event that represents the modifier form of an if
 # statement. It accepts as arguments the predicate of the if and the
