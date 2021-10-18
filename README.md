@@ -1839,8 +1839,40 @@ The second parameter will always be a [brace_block](#brace_block) or a [do_block
 def on_method_add_block(method, block); end
 ```
 
+### `mlhs_add`
+
+`mlhs_add` is a parser event that represents adding another variable onto a list of variables within a multiple assignment.
+
+```ruby
+first, second, third = value
+```
+
+In the above example, three `mlhs_add` events would be dispatched. The handler for this event accepts two parameters. The first is either the result of a previous call to `mlhs_add` or the result of the [mlhs_new](#mlhs_new) event handler. The second parameter is the variable that is being assigned, which can be one of:
+
+* [aref_field](#aref_field) if assigning into an enumerable (`collection[index]`)
+* [field](#field) if assigning to a field on an object (`object.field`)
+* [mlhs_paren](#mlhs_paren) if assigning into a destructured object with parentheses (`(first, second)`)
+* [var_field](#var_field) if assigning to a local variable (`variable`)
+
+```ruby
+def on_mlhs_add(mlhs, part); end
+```
+
+### `mlhs_new`
+
+`mlhs_new` is a parser event that represents the beginning of the left side of a multiple assignment. It is followed by any number of [mlhs_add](#mlhs_add) nodes that each represent another variable being assigned.
+
+```ruby
+first, second, third = value
+```
+
+In the above example, the `mlhs_new` event would be dispatched just before the `first` variable is declared. The handler for this event accepts no parameters as it is effectively the start of a list.
+
+```ruby
+def on_mlhs_new; end
+```
+
 <!--
-export type Mlhs = ParserEvent<"mlhs", { body: (ArefField | Field | Identifier | MlhsParen | VarField)[], comma: undefined | true }>;
 export type MlhsAddPost = ParserEvent<"mlhs_add_post", { body: [MlhsAddStar, Mlhs] }>;
 export type MlhsAddStar = ParserEvent<"mlhs_add_star", { body: [Mlhs, null | ArefField | Field | Identifier | VarField] }>;
 export type MlhsParen = ParserEvent<"mlhs_paren", { body: [Mlhs | MlhsAddPost | MlhsAddStar | MlhsParen] }>;
@@ -1903,31 +1935,6 @@ export type Zsuper = ParserEvent0<"zsuper">;
 type Assignable = ArefField | ConstPathField | Field | TopConstField | VarField;
 type HashContent = AssocNew | AssocSplat;
 type ParenAroundParams = Omit<Paren, "body"> & { body: [Params] };
-
-# An mlhs_new is a parser event that represents the beginning of the left
-# side of a multiple assignment. It is followed by any number of mlhs_add
-# nodes that each represent another variable being assigned.
-def on_mlhs_new
-  {
-    type: :mlhs,
-    body: [],
-    sl: lineno,
-    sc: char_pos,
-    el: lineno,
-    ec: char_pos
-  }
-end
-
-# An mlhs_add is a parser event that represents adding another variable
-# onto a list of assignments. It accepts as arguments the parent mlhs node
-# as well as the part that is being added to the list.
-def on_mlhs_add(mlhs, part)
-  if mlhs[:body].empty?
-    part.merge(type: :mlhs, body: [part])
-  else
-    mlhs.merge!(body: mlhs[:body] << part, el: part[:el], ec: part[:ec])
-  end
-end
 
 # An mlhs_add_post is a parser event that represents adding another set of
 # variables onto a list of assignments after a splat variable. It accepts
