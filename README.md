@@ -816,6 +816,12 @@ end
 value in pattern
 ```
 
+Finally, `case` will get dispatched when using right-hand assignment in Ruby 2.7+, as in:
+
+```ruby
+expression => value
+```
+
 The handler for this event accepts two parameters: the optional value that is being used as the predicate for the `case` chain, and the consequent clause (a [when](#when) or [in](#in) clause).
 
 ```ruby
@@ -1581,9 +1587,15 @@ Alternatively, in Ruby 3+ it is also used to handle rightward assignment for pat
 value in pattern
 ```
 
+Or, if you're using rightward assignment without pattern matching:
+
+```ruby
+expression => value
+```
+
 The handler for this event accepts three parameters. The first is the pattern that is being matched, which can be any Ruby expression. The second is a [stmts_add](#stmts_add) node that represents the statements inside the `in` clause. The final is an optional consequent clause that follows this `in` clause, which can be either an `in` or [else](#else).
 
-Note that for a single-line rightward pattern matching like the second example, both of the second two parameters to this event handler will be `nil`.
+Note that for a single-line rightward pattern matching like the second example or single-line rightward assignment like the third example, both the second and third parameters to this event handler will be `nil`.
 
 ```ruby
 def on_in(pattern, stmts_add, consequent); end
