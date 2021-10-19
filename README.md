@@ -2109,21 +2109,382 @@ Note that the shorthands above come from calling the `Method#parameters` method.
 def on_params(req, opts, rest, post, keys, keyrest, block); end
 ```
 
+### `paren`
+
+`paren` is a parser event that represents using balanced parentheses in a couple places in a Ruby program. In general parentheses can be used anywhere a Ruby expression can be used.
+
+```ruby
+(1 + 2)
+```
+
+The handler for this event accepts a single parameter that represents the expression inside the parentheses.
+
+```ruby
+def on_paren(contents); end
+```
+
+### `period`
+
+`period` is a scanner event that represents the use of the `.` operator. It is usually found in method calls.
+
+The handler for this event accepts a single string parameter that always contains the value `"."`.
+
+```ruby
+def on_period(value); end
+```
+
+### `program`
+
+`program` is a parser event that represents the overall syntax tree. It will always be called when a Ripper parser is used.
+
+The handler for this event accepts a single [stmts_add](#stmts_add) node that represents the top-level statements of the source.
+
+```ruby
+def on_program(stmts_add); end
+```
+
+### `qsymbols_beg`
+
+`qsymbols_beg` is a scanner event that represents the beginning of a symbol literal array. For example:
+
+```ruby
+%i[one two three]
+```
+
+In the snippet above, a `qsymbols_beg` event would be dispatched with the value of `"%i["`. The handler for this event accepts a single string parameter representing the token as seen in the source. Note that these kinds of arrays can start with a lot of different delimiter types (e.g., `%i|` or `%i<`).
+
+```ruby
+def on_qsymbols_beg(value); end
+```
+
+### `qsymbols_add`
+
+`qsymbols_add` is a parser event that represents adding an element to a symbol literal array.
+
+```ruby
+%i[one two three]
+```
+
+In the example above, three `qsymbols_add` events would be dispatched. The first would be with the result of the [qsymbols_new](#qsymbols_new) event handler, the second with the result of the first `qsymbols_add` event handler call, and the third with the result of the second call.
+
+The handler for this event accepts the current list of symbols (as a [qsymbols_new](#qsymbols_new) or [qsymbols_add](#qsymbols_add) node) and the next value that should be added (always a [tstring_content](#tstring_content) node).
+
+```ruby
+def on_qsymbols_add(qsymbols, tstring_content); end
+```
+
+### `qsymbols_new`
+
+`qsymbols_new` is a parser event that represents the beginning of a symbol literal array.
+
+```ruby
+%i[one two three]
+```
+
+In the axample above, a `qsymbols_new` event would be dispatched when the parser finds the `one` token. It can be followed by any number of [qsymbols_add](#qsymbols_add) events. The handler for this event accepts no parameters, as it's the start of a list.
+
+```ruby
+def on_qsymbols_new; end
+```
+
+### `qwords_beg`
+
+`qwords_beg` is a scanner event that represents the beginning of a string literal array. For example:
+
+```ruby
+%w[one two three]
+```
+
+In the snippet above, a `qwords_beg` event would be dispatched with the value of `"%w["`. The handler for this event accepts a single string parameter representing the token as seen in the source. Note that these kinds of arrays can start with a lot of different delimiter types (e.g., `%w|` or `%w<`).
+
+```ruby
+def on_qwords_beg(value); end
+```
+
+### `qwords_add`
+
+`qwords_add` is a parser event that represents adding an element to a string literal array.
+
+```ruby
+%w[one two three]
+```
+
+In the example above, three `qwords_add` events would be dispatched. The first would be with the result of the [qwords_new](#qwords_new) event handler, the second with the result of the first `qwords_add` event handler call, and the third with the result of the second call.
+
+The handler for this event accepts the current list of strings (as a [qwords_new](#qwords_new) or [qwords_add](#qwords_add) node) and the next value that should be added (always a [tstring_content](#tstring_content) node).
+
+```ruby
+def on_qwords_add(qwords, tstring_content); end
+```
+
+### `qwords_new`
+
+`qwords_new` is a parser event that represents the beginning of a string literal array.
+
+```ruby
+%w[one two three]
+```
+
+In the axample above, a `qwords_new` event would be dispatched when the parser finds the `one` token. It can be followed by any number of [qwords_add](#qwords_add) events. The handler for this event accepts no parameters, as it's the start of a list.
+
+```ruby
+def on_qwords_new; end
+```
+
+### `rational`
+
+`rational` is a scanner event that represents the use of a rational number literal.
+
+```ruby
+1r
+```
+
+The handler for this event accepts a single string parameter representing the value as seen in source.
+
+```ruby
+def on_rational(value); end
+```
+
+### `rbrace`
+
+`rbrace` is a scanner event that represents the use of a right brace, i.e., `}`.
+
+The handler for this event accepts a single string parameter that always contains the value `"}"`.
+
+```ruby
+def on_rbrace(value); end
+```
+
+### `rbracket`
+
+`rbracket` is a scanner event that represents the use of a right bracket, i.e., `]`.
+
+The handler for this event accepts a single string parameter that always contains the value `"]"`.
+
+```ruby
+def on_rbracket(value); end
+```
+
+### `redo`
+
+`redo` is a parser event that represents the use of the `redo` keyword.
+
+```ruby
+redo
+```
+
+The handler for this event accepts no parameters as the `redo` keyword accepts no arguments.
+
+```ruby
+def on_redo; end
+```
+
+### `regexp_add`
+
+`regexp_add` is a parser event that represents a piece of a regular expression body.
+
+```ruby
+/.+ #{pattern} .+/
+```
+
+In the example above, three `regexp_add` events would be dispatched. The first would be for the [tstring_content](#tstring_content) node representing everything up to the interpolation. The second would be for the interpolated expression. The final would be for the second [tstring_content](#tstring_content) node representing everything after the interpolation.
+
+The handler for this event accepts two parameters. The first is the result of the call to the previous `regexp_add` (if this is not the first part of the regular expression) or the result of the call to [regexp_new](#regexp_new) (if this is the first part of the regular expression). The second is the piece that is being added to the list of parts, which can be a [tstring_content](#tstring_content) for plain string content, a [string_embexpr](#string_embexpr) for an interpolated expression, or a [string_dvar](#string_dvar) for the shorthand variable interpolation.
+
+```ruby
+def on_regexp_add(regexp, part); end
+```
+
+### `regexp_beg`
+
+`regexp_beg` is a scanner event that represents the start of a regular expression literal.
+
+```ruby
+/.+/
+```
+
+In the example above, the `regexp_beg` event would be dispatched when the parser sees the `/` token. Regular expression literals can also be declared using the `%r` syntax, as in:
+
+```ruby
+%r{.+}
+```
+
+The handler for this event accepts a single string parameter that represents the start of the regular expression literal (either the `"/"` or the `"%r{"` in the examples above).
+
+```ruby
+def on_regexp_beg(value); end
+```
+
+### `regexp_end`
+
+`regexp_end` is a scanner event that represents the end of a regular expression literal.
+
+```ruby
+/.+/m
+```
+
+In the example above, the `regexp_end` event represents the `/m` at the end of the regular expression literal. You can also declare regular expression literals using `%r`, as in:
+
+```ruby
+%r{.+}m
+```
+
+The handler for this event accepts a single string parameter that represents the end of the regular expression literal (either the `"/m"` or the `"}m"` in the examples above).
+
+```ruby
+def on_regexp_end(value); end
+```
+
+### `regexp_literal`
+
+`regexp_literal` is a parser event that represents a regular expression literal.
+
+```ruby
+/.+/
+```
+
+The handler for this event accepts two parameters. The first is either a [regexp_new](#regexp_new) node (if the regular expression literal is empty) or [regexp_add](#regexp_add) (if there is content in the regular expression literal). The second is a [regexp_end](#regexp_end) node that represents the end of the declaration of the regular expression literal.
+
+```ruby
+def on_regexp_literal(regexp, ending); end
+```
+
+### `regexp_new`
+
+`regexp_new` is a parser event that represents the beginning of a regular expression literal.
+
+```ruby
+/.+/
+```
+
+In the example above, a `regexp_new` event would be dispatched just before the `.+` [tstring_content](#tstring_content) node. The handler for this event accepts no parameters as it's the start of a list.
+
+```ruby
+def on_regexp_new; end
+```
+
+### `rescue`
+
+`rescue` is a parser event that represents the use of the `rescue` keyword inside of a [bodystmt](#bodystmt) node.
+
+```ruby
+begin
+rescue
+end
+```
+
+You can optionally rescue a list of exceptions (either in the form of constants by referencing them directly or in the form of variables that reference exceptions), as in:
+
+```ruby
+begin
+rescue exception
+rescue IOError, SyntaxError
+end
+```
+
+You can also assign the rescued error to a variable, as in:
+
+```ruby
+begin
+rescue => error
+end
+```
+
+Finally, you can rescue a specific error and then assign it to a variable, as in:
+
+```ruby
+begin
+rescue IOError => error
+end
+```
+
+The handler for this event accepts four parameters. The first is the list of exceptions that are being rescued. This is either `nil` (if there are no explicit exceptions being rescued), an array containing a single node (if only one exception is being rescued), a [mrhs_add](#mrhs_add) node (if multiple exceptions are being rescued), or an [mrhs_add_star](#mrhs_add_star) node (if multiple exceptions are being rescued and its using a splat). The second is an optional variable being used to capture the exception. The third is a [stmts_add](#stmts_add) node representing the statements inside the `rescue` clause. Finally, the fourth is an optional consequent `rescue` clause if one is present.
+
+```ruby
+def on_rescue(exceptions, variable, stmts_add, consequent); end
+```
+
+### `rescue_mod`
+
+`rescue_mod` is a parser event that represents the using modifier form of a `rescue` clause.
+
+```ruby
+expression rescue value
+```
+
+The handler for this event accepts one parameter for the statement that is being rescued and one parameter for the value that should be used if an exception is raised. Both can be any Ruby expression.
+
+```ruby
+def on_rescue_mod(statement, rescued); end
+```
+
+### `rest_param`
+
+`rest_param` is a parser event that represents defining a parameter in a method definition that accepts all remaining positional parameters.
+
+```ruby
+def method(*rest) end
+```
+
+The handler for this event accepts a single optional [ident](#ident) parameter that represents the name assigned to the rest parameter. If no name is provided (just a bare `*`), then this parameter will be `nil`.
+
+```ruby
+def on_rest_param(ident); end
+```
+
+### `retry`
+
+`retry` is a parser event that represents the use of the `retry` keyword.
+
+```ruby
+retry
+```
+
+The handler for this event accepts no parameters as the `retry` keyword accepts no arguments.
+
+```ruby
+def on_retry; end
+```
+
+### `return`
+
+`return` is a parser event that represents using the return keyword with arguments.
+
+```ruby
+return value
+```
+
+The handler for this event accepts a single [args_add_block](#args_add_block) event that contains all of the arguments being passed to the keyword.
+
+```ruby
+def on_return(args_add_block); end
+```
+
+### `return0`
+
+`return0` is a parser event that represents the bare return keyword.
+
+```ruby
+return
+```
+
+The handler for this event accepts no parameters.
+
+```ruby
+def on_return0; end
+```
+
+### `rparen`
+
+`rparen` is a scanner event that represents the use of a right parenthesis, i.e., `)`.
+
+The handler for this event accepts a single string parameter that always contains the value `")"`.
+
+```ruby
+def on_rparen(value); end
+```
+
 <!--
-export type Paren = ParserEvent<"paren", { body: [AnyNode], lparen: Lparen }>;
-export type Program = ParserEvent<"program", { body: [Stmts] }>;
-export type Qsymbols = ParserEvent<"qsymbols", { body: TStringContent[] }>;
-export type Qwords = ParserEvent<"qwords", { body: TStringContent[] }>;
-export type Rassign = ParserEvent<"rassign", { body: [AnyNode, AnyNode], keyword: boolean }>;
-export type Redo = ParserEvent0<"redo">;
-export type RegexpLiteral = ParserEvent<"regexp_literal", { body: StringContent[], beging: string, ending: string }>;
-export type Rescue = ParserEvent<"rescue", { body: [null | RescueEx, Stmts, null | Stmts] }>;
-export type RescueEx = ParserEvent<"rescue_ex", { body: [AnyNode, null | Field | VarField] }>;
-export type RescueModifier = ParserEvent<"rescue_mod", { body: [AnyNode, AnyNode] }>;
-export type RestParam = ParserEvent<"rest_param", { body: [null | Identifier] }>;
-export type Retry = ParserEvent0<"retry">;
-export type Return = ParserEvent<"return", { body: [Args | ArgsAddBlock] }>;
-export type Return0 = ParserEvent0<"return0">;
 export type Sclass = ParserEvent<"sclass", { body: [AnyNode, Bodystmt] }>;
 export type Stmts = ParserEvent<"stmts", { body: AnyNode[] }>;
 export type String = ParserEvent<"string", { body: [TStringContent] }>;
@@ -2158,419 +2519,6 @@ export type XStringLiteral = ParserEvent<"xstring_literal", { body: StringConten
 export type Yield = ParserEvent<"yield", { body: [ArgsAddBlock | Paren] }>;
 export type Yield0 = ParserEvent0<"yield0">;
 export type Zsuper = ParserEvent0<"zsuper">;
-
-# A paren is a parser event that represents using parentheses pretty much
-# anywhere in a Ruby program. It accepts as arguments the contents, which
-# can be either params or statements.
-def on_paren(contents)
-  lparen = find_scanner_event(:@lparen)
-  rparen = find_scanner_event(:@rparen)
-
-  if contents && contents[:type] == :params
-    contents.merge!(
-      sc: find_next_statement_start(lparen[:ec]),
-      ec: rparen[:sc]
-    )
-  end
-
-  {
-    type: :paren,
-    lparen: lparen,
-    body: [contents],
-    sl: lparen[:sl],
-    sc: lparen[:sc],
-    el: rparen[:el],
-    ec: rparen[:ec]
-  }
-end
-
-# If we encounter a parse error, just immediately bail out so that our runner
-# can catch it.
-def on_parse_error(error, *)
-  raise ParserError.new(error, lineno, column)
-end
-alias on_alias_error on_parse_error
-alias on_assign_error on_parse_error
-alias on_class_name_error on_parse_error
-alias on_param_error on_parse_error
-
-# period is a scanner event that represents the use of the period operator. It
-# is usually found in method calls.
-def on_period(value)
-  start_line = lineno
-  start_char = char_pos
-
-  {
-    type: :@period,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-end
-
-# The program node is the very top of the AST. Here we'll attach all of
-# the comments that we've gathered up over the course of parsing the
-# source string. We'll also attach on the __END__ content if there was
-# some found at the end of the source string.
-def on_program(stmts)
-  range = { sl: 1, el: lines.length, sc: 0, ec: source.length }
-
-  stmts[:body] << @__end__ if @__end__
-  stmts.bind(0, source.length)
-
-  range.merge(type: :program, body: [stmts], comments: @comments)
-end
-
-# qsymbols_beg is a scanner event that represents the beginning of a symbol
-# literal array. For example in the following snippet:
-#
-#     %i[foo bar baz]
-#
-# a qsymbols_beg would be triggered with the value of "%i[".
-def on_qsymbols_beg(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@qsymbols_beg,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# qsymbols_new is a parser event that represents the beginning of a symbol
-# literal array, like %i[one two three]. It can be followed by any number
-# of qsymbols_add events, which we'll append onto an array body.
-def on_qsymbols_new
-  find_scanner_event(:@qsymbols_beg).merge!(type: :qsymbols, body: [])
-end
-
-# qsymbols_add is a parser event that represents an element inside of a
-# symbol literal array like %i[one two three]. It accepts as arguments the
-# parent qsymbols node as well as a tstring_content scanner event
-# representing the bare words.
-def on_qsymbols_add(qsymbols, tstring_content)
-  qsymbols.merge!(
-    body: qsymbols[:body] << tstring_content,
-    el: tstring_content[:el],
-    ec: tstring_content[:ec]
-  )
-end
-
-# qwords_beg is a scanner event that represents the beginning of a word
-# literal array. For example in the following snippet:
-#
-#     %w[foo bar baz]
-#
-# a qwords_beg would be triggered with the value of "%w[".
-def on_qwords_beg(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@qwords_beg,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# qwords_new is a parser event that represents the beginning of a string
-# literal array, like %w[one two three]. It can be followed by any number
-# of qwords_add events, which we'll append onto an array body.
-def on_qwords_new
-  find_scanner_event(:@qwords_beg).merge!(type: :qwords, body: [])
-end
-
-# qsymbols_add is a parser event that represents an element inside of a
-# symbol literal array like %i[one two three]. It accepts as arguments the
-# parent qsymbols node as well as a tstring_content scanner event
-# representing the bare words.
-def on_qwords_add(qwords, tstring_content)
-  qwords.merge!(
-    body: qwords[:body] << tstring_content,
-    el: tstring_content[:el],
-    ec: tstring_content[:ec]
-  )
-end
-
-# rational is a scanner event that represents a rational number literal.
-def on_rational(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@rational,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# rbrace is a scanner event that represents the use of a right brace, i.e.,
-# "}".
-def on_rbrace(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@rbrace,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# rbracket is a scanner event that represents the use of a right bracket,
-# i.e., "]".
-def on_rbracket(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@rbracket,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# redo is a parser event that represents the bare redo keyword. It has no
-# body as it accepts no arguments.
-def on_redo
-  find_scanner_event(:@kw, 'redo').merge!(type: :redo)
-end
-
-# regexp_add is a parser event that represents a piece of a regular expression
-# body. It accepts as arguments the parent regexp node as well as a
-# tstring_content scanner event representing string content, a
-# string_embexpr parser event representing interpolated content, or a
-# string_dvar parser event representing an interpolated variable.
-def on_regexp_add(regexp, piece)
-  regexp.merge!(
-    body: regexp[:body] << piece,
-    el: regexp[:el],
-    ec: regexp[:ec]
-  )
-end
-
-# regexp_beg is a scanner event that represents the start of a regular
-# expression. It can take a couple of forms since regexp can either start with
-# a forward slash or a %r.
-def on_regexp_beg(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@regexp_beg,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# regexp_end is a scanner event that represents the end of a regular
-# expression. It will contain the closing brace or slash, as well as any flags
-# being passed to the regexp.
-def on_regexp_end(value)
-  start_line = lineno
-  start_char = char_pos
-
-  {
-    type: :@regexp_end,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-end
-
-# regexp_literal is a parser event that represents a regular expression.
-# It accepts as arguments a regexp node which is a built-up array of
-# pieces that go into the regexp content, as well as the ending used to
-# close out the regexp which includes any modifiers.
-def on_regexp_literal(regexp, ending)
-  regexp.merge!(
-    type: :regexp_literal,
-    ending: ending[:body],
-    el: ending[:el],
-    ec: ending[:ec]
-  )
-end
-
-# regexp_new is a parser event that represents the beginning of a regular
-# expression literal, like /foo/. It can be followed by any number of
-# regexp_add events, which we'll append onto an array body.
-def on_regexp_new
-  beging = find_scanner_event(:@regexp_beg)
-  beging.merge!(type: :regexp, body: [], beging: beging[:body])
-end
-
-# rescue is a special kind of node where you have a rescue chain but it
-# doesn't really have all of the information that it needs in order to
-# determine its ending. Therefore it relies on its parent bodystmt node to
-# report its ending to it.
-class Rescue < Node
-  def bind_end(ec)
-    value.merge!(ec: ec)
-
-    stmts = value[:body][1]
-    consequent = value[:body][2]
-
-    if consequent
-      consequent.bind_end(ec)
-      stmts.bind_end(consequent[:sc])
-    else
-      stmts.bind_end(ec)
-    end
-  end
-end
-
-# rescue is a parser event that represents the use of the rescue keyword
-# inside of a bodystmt.
-def on_rescue(exceptions, variable, stmts, consequent)
-  beging = find_scanner_event(:@kw, 'rescue')
-  exceptions = exceptions[0] if exceptions.is_a?(Array)
-
-  last_node = variable || exceptions || beging
-  stmts.bind(find_next_statement_start(last_node[:ec]), char_pos)
-
-  # We add an additional inner node here that ripper doesn't provide so that
-  # we have a nice place to attach inline comment. But we only need it if we
-  # have an exception or a variable that we're rescuing.
-  rescue_ex =
-    if exceptions || variable
-      {
-        type: :rescue_ex,
-        body: [exceptions, variable],
-        sl: beging[:sl],
-        sc: beging[:ec] + 1,
-        el: last_node[:el],
-        ec: last_node[:ec]
-      }
-    end
-
-  Rescue.new(
-    self,
-    beging.merge!(
-      type: :rescue,
-      body: [rescue_ex, stmts, consequent],
-      el: lineno,
-      ec: char_pos
-    )
-  )
-end
-
-# rescue_mod represents the modifier form of a rescue clause. It accepts as
-# arguments the statement that may raise an error and the value that should
-# be used if it does.
-def on_rescue_mod(statement, rescued)
-  find_scanner_event(:@kw, 'rescue')
-
-  {
-    type: :rescue_mod,
-    body: [statement, rescued],
-    sl: statement[:sl],
-    sc: statement[:sc],
-    el: rescued[:el],
-    ec: rescued[:ec]
-  }
-end
-
-# rest_param is a parser event that represents defining a parameter in a
-# method definition that accepts all remaining positional parameters. It
-# accepts as an argument an optional identifier for the parameter. If it
-# is omitted, then we're just using the plain operator.
-def on_rest_param(ident)
-  oper = find_scanner_event(:@op, '*')
-  return oper.merge!(type: :rest_param, body: [nil]) unless ident
-
-  oper.merge!(
-    type: :rest_param,
-    body: [ident],
-    el: ident[:el],
-    ec: ident[:ec]
-  )
-end
-
-# retry is a parser event that represents the bare retry keyword. It has
-# no body as it accepts no arguments.
-def on_retry
-  find_scanner_event(:@kw, 'retry').merge!(type: :retry)
-end
-
-# return is a parser event that represents using the return keyword with
-# arguments. It accepts as an argument an args_add_block event that
-# contains all of the arguments being passed.
-def on_return(args_add_block)
-  find_scanner_event(:@kw, 'return').merge!(
-    type: :return,
-    body: [args_add_block],
-    el: args_add_block[:el],
-    ec: args_add_block[:ec]
-  )
-end
-
-# return0 is a parser event that represents the bare return keyword. It
-# has no body as it accepts no arguments. This is as opposed to the return
-# parser event, which is the version where you're returning one or more
-# values.
-def on_return0
-  find_scanner_event(:@kw, 'return').merge!(type: :return0)
-end
-
-# rparen is a scanner event that represents the use of a right parenthesis,
-# i.e., ")".
-def on_rparen(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@rparen,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
 
 # sclass is a parser event that represents a block of statements that
 # should be evaluated within the context of the singleton class of an
@@ -3462,4 +3410,16 @@ end
 def on_zsuper
   find_scanner_event(:@kw, 'super').merge!(type: :zsuper)
 end
+
+## Errors
+
+# If we encounter a parse error, just immediately bail out so that our runner
+# can catch it.
+def on_parse_error(error, *)
+  raise ParserError.new(error, lineno, column)
+end
+alias on_alias_error on_parse_error
+alias on_assign_error on_parse_error
+alias on_class_name_error on_parse_error
+alias on_param_error on_parse_error
 -->
