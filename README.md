@@ -2484,15 +2484,161 @@ The handler for this event accepts a single string parameter that always contain
 def on_rparen(value); end
 ```
 
+### `sclass`
+
+`sclass` is a parser event that represents a block of statements that should be evaluated within the context of the singleton class of an object. It's frequently used to define singleton methods. It looks like the following example:
+
+```ruby
+class << self
+end
+```
+
+The handler for this event accepts two parameters. The first is the object whose singleton class the statements should be evaluated in. In the example above it would be the [var_ref](#var_ref) representing the `self` keyword. The second is the [bodystmt](#bodystmt) node that represents the statements inside the block.
+
+```ruby
+def on_sclass(object, bodystmt); end
+```
+
+### `semicolon`
+
+`semicolon` is a scanner event that represents the use of a semicolon in the source.
+
+```ruby
+;
+```
+
+The handler for this event accepts a single string parameter that always contains the value `";"`.
+
+```ruby
+def on_semicolon(value); end
+```
+
+### `sp`
+
+`sp` is a scanner event that represents the use of a space in the source. As you can imagine, this event gets triggered quite often, so take care when manually defining the event handler for this event.
+
+The handler for this event accepts a single string parameter that always contains the value `" "`.
+
+```ruby
+def on_sp(value); end
+```
+
+### `stmts_add`
+
+`stmts_add` is a parser event that represents a single statement inside a list of statements within any lexical block.
+
+The handler for this event accepts two parameters. The first is the accumulated list of statements (either a [stmts_new](#stmts_new) if it's the first statement or a `stmts_add` if it's not the first statement). The second is the statement that we're adding to the list which can be any Ruby expression.
+
+```ruby
+def on_stmts_add(stmts, stmt); end
+```
+
+### `stmts_new`
+
+`stmts_new` is a parser event that represents the beginning of a list of statements within any lexical block. It can be followed by any number of `stmts_add` events.
+
+The handler for this event accepts no parameters as it's the start of a list.
+
+```ruby
+def on_stmts_new; end
+```
+
+### `string_add`
+
+`string_add` is a parser event that represents adding a section onto a string.
+
+```ruby
+"left #{middle} right"
+```
+
+In the example above, three `string_add` events would be dispatched. The first would be for the [tstring_content](#tstring_content) on the left side of the interpolation. The second would be for the [string_embexpr](#string_embexpr) representing the interpolation. The third would be for the [tstring_content](#tstring_content) on the right side of the interpolation.
+
+The handler for this event accepts two parameters. The first is a [string_content](#string_content) if it's the first part of the string or a `string_add` if it's not the first part. The second is the part that is being added to the string, which can be a [tstring_content](#tstring_content) for plain string content, a [string_embexpr](#string_embexpr) for an interpolated expression, or a [string_dvar](#string_dvar) for a shorthand variable interpolation.
+
+```ruby
+def on_string_add(string, part); end
+```
+
+### `string_concat`
+
+`string_concat` is a parser event that represents concatenating two strings together using a backward slash, as in the following example:
+
+```ruby
+"first" \
+  "second"
+```
+
+The handler for this event accepts two parameters. The first is either a `string_concat` or a [string_literal](#string_literal). The second is always the trailing [string_literal](#string_literal).
+
+```ruby
+def on_string_concat(left, right); end
+```
+
+### `string_content`
+
+`string_content` is a parser event that represents the beginning of the contents of a string.
+
+```ruby
+"string"
+```
+
+In the example above, a `string_content` event would be dispatched when the parser encounters the `string` token. The handler for this event accepts no parameters as its the beginning of a list.
+
+```ruby
+def on_string_content; end
+```
+
+### `string_dvar`
+
+`string_dvar` is a parser event that represents shorthand interpolation of a variable into a string. It allows you to take an instance variable, class variable, or global variable and omit the braces when interpolating. For example, if you wanted to interpolate the instance variable `@variable` into a string, you would write:
+
+```ruby
+"#@variable"
+```
+
+The handler for this event accepts a single parameter that represents the variable being interpolated. This can either be a [var_ref](#var_ref) or a [backref](#backref).
+
+```ruby
+def on_string_dvar(variable); end
+```
+
+### `string_embexpr`
+
+`string_embexpr` is a parser event that represents interpolated content. It can be contained within a couple of different parent nodes, including regular expressions, strings, and dynamic symbols.
+
+```ruby
+"string #{expression}"
+```
+
+The handler for this event accepts a single [stmts_add](#stmts_add) node representing the statements contained within the interpolation.
+
+```ruby
+def on_string_embexpr(stmts_add); end
+```
+
+### `string_literal`
+
+`string_literal` is a parser event that represents a string literal.
+
+```ruby
+"string"
+```
+
+It is also used to represent a heredoc literal.
+
+```ruby
+<<~DOC
+  string
+DOC
+```
+
+The handler for this event accepts a single [string_content](#string_content) node (if the string is empty) or a [string_add](#string_add) node (if the string is not empty).
+
+```ruby
+def on_string_literal(string); end
+```
+
 <!--
-export type Sclass = ParserEvent<"sclass", { body: [AnyNode, Bodystmt] }>;
-export type Stmts = ParserEvent<"stmts", { body: AnyNode[] }>;
-export type String = ParserEvent<"string", { body: [TStringContent] }>;
-export type StringConcat = ParserEvent<"string_concat", { body: [StringConcat | StringLiteral, StringLiteral] }>;
-export type StringContent = StringDVar | StringEmbExpr | TStringContent;
-export type StringDVar = ParserEvent<"string_dvar", { body: [Backref | VarRef] }>;
-export type StringEmbExpr = ParserEvent<"string_embexpr", { body: [Stmts] }>;
-export type StringLiteral = ParserEvent<"string_literal", { body: StringContent[], quote: string }>;
 export type Super = ParserEvent<"super", { body: [Args | ArgParen | ArgsAddBlock] }>;
 export type SymbolLiteral = ParserEvent<"symbol_literal", { body: [Backtick | Const | CVar | GVar | Identifier | IVar | Keyword | Op] }>;
 export type Symbols = ParserEvent<"symbols", { body: Word[] }>;
@@ -2519,220 +2665,6 @@ export type XStringLiteral = ParserEvent<"xstring_literal", { body: StringConten
 export type Yield = ParserEvent<"yield", { body: [ArgsAddBlock | Paren] }>;
 export type Yield0 = ParserEvent0<"yield0">;
 export type Zsuper = ParserEvent0<"zsuper">;
-
-# sclass is a parser event that represents a block of statements that
-# should be evaluated within the context of the singleton class of an
-# object. It's frequently used to define singleton methods. It looks like
-# the following example:
-#
-#     class << self do foo end
-#               │       │
-#               │       └> bodystmt
-#               └> target
-#
-def on_sclass(target, bodystmt)
-  beging = find_scanner_event(:@kw, 'class')
-  ending = find_scanner_event(:@kw, 'end')
-
-  bodystmt.bind(find_next_statement_start(target[:ec]), ending[:sc])
-
-  {
-    type: :sclass,
-    body: [target, bodystmt],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# semicolon is a scanner event that represents the use of a semicolon in the
-# source. We don't need to track this event in the AST that we're generating,
-# so we're not going to define an explicit handler for it.
-#
-#     def on_semicolon(value)
-#       value
-#     end
-
-# sp is a scanner event that represents the use of a space in the source. As
-# you can imagine, this event gets triggered quite often. We don't need to
-# track this event in the AST that we're generating, so we're not going to
-# define an explicit handler for it.
-#
-#     def on_sp(value)
-#       value
-#     end
-
-# stmts_add is a parser event that represents a single statement inside a
-# list of statements within any lexical block. It accepts as arguments the
-# parent stmts node as well as an stmt which can be any expression in
-# Ruby.
-def on_stmts_add(stmts, stmt)
-  stmts << stmt
-end
-
-# Everything that has a block of code inside of it has a list of statements.
-# Normally we would just track those as a node that has an array body, but we
-# have some special handling in order to handle empty statement lists. They
-# need to have the right location information, so all of the parent node of
-# stmts nodes will report back down the location information. We then
-# propagate that onto void_stmt nodes inside the stmts in order to make sure
-# all comments get printed appropriately.
-class Stmts < Node
-  def bind(sc, ec)
-    value.merge!(sc: sc, ec: ec)
-
-    if value[:body][0][:type] == :void_stmt
-      value[:body][0].merge!(sc: sc, ec: sc)
-    end
-
-    attach_comments(sc, ec)
-  end
-
-  def bind_end(ec)
-    value.merge!(ec: ec)
-  end
-
-  def <<(statement)
-    if value[:body].any?
-      value.merge!(statement.slice(:el, :ec))
-    else
-      value.merge!(statement.slice(:sl, :el, :sc, :ec))
-    end
-
-    value[:body] << statement
-    self
-  end
-
-  private
-
-  def attach_comments(sc, ec)
-    attachable =
-      parser.comments.select do |comment|
-        comment[:type] == :@comment && !comment[:inline] &&
-          sc <= comment[:sc] && ec >= comment[:ec] &&
-          !comment[:value].include?('prettier-ignore')
-      end
-
-    return if attachable.empty?
-
-    parser.comments -= attachable
-    value[:body] = (value[:body] + attachable).sort_by! { |node| node[:sc] }
-  end
-end
-
-# stmts_new is a parser event that represents the beginning of a list of
-# statements within any lexical block. It can be followed by any number of
-# stmts_add events, which we'll append onto an array body.
-def on_stmts_new
-  Stmts.new(
-    self,
-    type: :stmts,
-    body: [],
-    sl: lineno,
-    el: lineno,
-    sc: char_pos,
-    ec: char_pos
-  )
-end
-
-# string_add is a parser event that represents a piece of a string. It
-# could be plain @tstring_content, string_embexpr, or string_dvar nodes.
-# It accepts as arguments the parent string node as well as the additional
-# piece of the string.
-def on_string_add(string, piece)
-  string.merge!(body: string[:body] << piece, el: piece[:el], ec: piece[:ec])
-end
-
-# string_concat is a parser event that represents concatenating two
-# strings together using a backward slash, as in the following example:
-#
-#     'foo' \
-#       'bar'
-#
-def on_string_concat(left, right)
-  {
-    type: :string_concat,
-    body: [left, right],
-    sl: left[:sl],
-    sc: left[:sc],
-    el: right[:el],
-    ec: right[:ec]
-  }
-end
-
-# string_content is a parser event that represents the beginning of the
-# contents of a string, which will either be embedded inside of a
-# string_literal or a dyna_symbol node. It will have an array body so that
-# we can build up a list of @tstring_content, string_embexpr, and
-# string_dvar nodes.
-def on_string_content
-  {
-    type: :string,
-    body: [],
-    sl: lineno,
-    el: lineno,
-    sc: char_pos,
-    ec: char_pos
-  }
-end
-
-# string_dvar is a parser event that represents a very special kind of
-# interpolation into string. It allows you to take an instance variable,
-# class variable, or global variable and omit the braces when
-# interpolating. For example, if you wanted to interpolate the instance
-# variable @foo into a string, you could do "#@foo".
-def on_string_dvar(var_ref)
-  find_scanner_event(:@embvar).merge!(
-    type: :string_dvar,
-    body: [var_ref],
-    el: var_ref[:el],
-    ec: var_ref[:ec]
-  )
-end
-
-# string_embexpr is a parser event that represents interpolated content.
-# It can go a bunch of different parent nodes, including regexp, strings,
-# xstrings, heredocs, dyna_symbols, etc. Basically it's anywhere you see
-# the #{} construct.
-def on_string_embexpr(stmts)
-  beging = find_scanner_event(:@embexpr_beg)
-  ending = find_scanner_event(:@embexpr_end)
-
-  stmts.bind(beging[:ec], ending[:sc])
-
-  {
-    type: :string_embexpr,
-    body: [stmts],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# String literals are either going to be a normal string or they're going
-# to be a heredoc if we've just closed a heredoc.
-def on_string_literal(string)
-  heredoc = @heredocs[-1]
-
-  if heredoc && heredoc[:ending]
-    @heredocs.pop.merge!(body: string[:body])
-  else
-    beging = find_scanner_event(:@tstring_beg)
-    ending = find_scanner_event(:@tstring_end)
-
-    {
-      type: :string_literal,
-      body: string[:body],
-      quote: beging[:body],
-      sl: beging[:sl],
-      sc: beging[:sc],
-      el: ending[:el],
-      ec: ending[:ec]
-    }
-  end
-end
 
 # A super is a parser event that represents using the super keyword with
 # any number of arguments. It can optionally use parentheses (represented
