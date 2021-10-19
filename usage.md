@@ -1,4 +1,4 @@
-# Usage
+## Usage
 
 If you'd like to see the syntax tree that Ripper generates for Ruby code, you can try Ripper in `irb`. The `::sexp_raw` method shows the syntax tree that is constructed from the scanner and parser events, while `::lex` shows the scanner events. You can also use the `::sexp` method to group events in a more readable way:
 

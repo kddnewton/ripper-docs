@@ -1,4 +1,4 @@
-# Events
+## Events
 
 Below is a reference for the different scanner and parser events defined in Ripper. Each event specifies:
 
@@ -6,7 +6,7 @@ Below is a reference for the different scanner and parser events defined in Ripp
 * An example of the syntax that would trigger the event.
 * How you would write a handler method for this event, and the types of objects that would be passed in as arguments to that handler.
 
-## `BEGIN`
+### `BEGIN`
 
 `BEGIN` is a parser event that represents the use of the `BEGIN` keyword, which hooks into the lifecycle of the interpreter. Whatever is inside the block will get executed when the program starts. The syntax looks like the following:
 
@@ -23,7 +23,7 @@ The handler for this event accepts one parameter that is always a `stmts_add` no
 def on_BEGIN(stmts_add); end
 ```
 
-## `CHAR`
+### `CHAR`
 
 `CHAR` is a parser event that represents a single codepoint in the script encoding. For example:
 
@@ -37,7 +37,7 @@ is a representation of the string literal `"a"`. You can use control characters 
 def on_CHAR(value); end
 ```
 
-## `END`
+### `END`
 
 `END` is a parser event that represents the use of the `END` keyword, which hooks into the lifecycle of the interpreter. Whatever is inside the block will get executed when the program ends. The syntax looks like the following:
 
@@ -52,7 +52,7 @@ Interestingly, you can't use the `do` and `end` keywords for the block. The hand
 def on_END(stmts_add); end
 ```
 
-## `__end__`
+### `__end__`
 
 `__end__` is a scanner event that represents `__END__` syntax, which allows individual scripts to keep content after the main ruby code that can be read through the `DATA` constant. It looks like:
 
@@ -69,7 +69,7 @@ The handler for this event accepts one parameter that is always a string contain
 def on___end__(value); end
 ```
 
-## `alias`
+### `alias`
 
 `alias` is a parser event that represents the use of the `alias` keyword with regular arguments (not global variables). The `alias` keyword is used to make a method respond to another name as well as the current one. For example, to get the method `name` to also respond to `aliased_name`, you would:
 
@@ -85,7 +85,7 @@ The handler for this event accepts two parameters, that correspond to the first 
 def on_alias(left, right); end
 ```
 
-## `aref`
+### `aref`
 
 `aref` is a parser event when you're pulling a value out of a collection at a specific index. Put another way, it's any time you're calling the method `#[]`. As an example:
 
@@ -105,7 +105,7 @@ Because the left-hand side of this expression can be any primary Ruby expression
 def on_aref(collection, index); end
 ```
 
-## `aref_field`
+### `aref_field`
 
 `aref_field` nodes are for assigning values into collections at specific indices. Put another way, it's any time you're calling the method `#[]=`. The `aref_field` node itself is just the left side of the assignment, and they're always wrapped in [assign](#assign) nodes. As an example:
 
@@ -119,7 +119,7 @@ The nodes always contain two children, the expression that corresponds to the co
 def on_aref_field(collection, index); end
 ```
 
-## `arg_ambiguous`
+### `arg_ambiguous`
 
 `arg_ambiguous` is a parser event that represents when the parser sees an argument as ambiguous. For example, in the following snippet:
 
@@ -135,7 +135,7 @@ Unlike most other parser events, the output of the handler method for this event
 def on_arg_ambiguous(value); end
 ```
 
-## `arg_paren`
+### `arg_paren`
 
 `arg_paren` is a parser event that represents wrapping arguments to a method inside a set of parentheses. For example, in the follow snippet:
 
@@ -155,7 +155,7 @@ The handler for this event accepts one parameter, which is either an [args_add](
 def on_arg_paren(args); end
 ```
 
-## `args_add`
+### `args_add`
 
 `args_add` is a parser event that represents a single argument inside a list of arguments to any method call or an array. It accepts as arguments the previous `args_add` or [args_new](#args_new) node as well as a value which can be anything that could be passed as an argument.
 
@@ -177,7 +177,7 @@ Note that because of the nature of the chaining here, it's not possible to know 
 def on_args_add(args, arg); end
 ```
 
-## `args_add_block`
+### `args_add_block`
 
 `args_add_block` is a parser event that represents a list of arguments and potentially a block argument. If no block is passed, then the second argument will be the literal `false`. `args_add_block` is commonly seen being passed to any method where you use parentheses (wrapped in an [arg_paren](#arg_paren) node). It's also used to pass arguments to the various control-flow keywords like `return`.
 
@@ -199,7 +199,7 @@ The handler for this event accepts the arguments (as an [args_new](#args_new), [
 def on_args_add_block(args, block); end
 ```
 
-## `args_add_star`
+### `args_add_star`
 
 `args_add_star` is a parser event that represents adding a splat of values to a list of arguments. For example, in the following snippet, the `*arguments` would trigger an `args_add_star` event:
 
@@ -213,7 +213,7 @@ This event is very similar to the [args_add](#args_add) event except that whatev
 def on_args_add_star(args, arg); end
 ```
 
-## `args_forward`
+### `args_forward`
 
 `args_forward` is a parser event that represents forwarding all kinds of arguments onto another method call. For example, in the following snippet:
 
@@ -237,7 +237,7 @@ The handler for this event accepts no arguments. It is passed up to the parent a
 def on_args_forward; end
 ```
 
-## `args_new`
+### `args_new`
 
 `args_new` is a parser event that represents the beginning of a list of arguments to any method call or an array. It can be followed by any number of [args_add](#args_add), [args_add_block](#args_add_block), or [args_forward](#args_forward) events, which end up in a chain. For example, in the following snippet:
 
@@ -251,7 +251,7 @@ there will be one [args_add](#args_add) node that contains as its first child an
 def on_args_new; end
 ```
 
-## `array`
+### `array`
 
 `array` is a parser event that contains myriad child nodes because of the special array literal syntax like `%w` and `%i`. For example, the following lines all produce an `array` event:
 
@@ -271,7 +271,7 @@ In order, the child node types coming in would be `nil`, [args_add](#args_add), 
 def on_array(contents); end
 ```
 
-## `aryptn`
+### `aryptn`
 
 `aryptn` is a parser event that represents matching against an array pattern using the Ruby `2.7`+ pattern matching syntax. It's one of the more complicated events, because the four parameters that it accepts can almost all be `nil`. First, let's look at what kind of code triggers this event:
 
@@ -298,7 +298,7 @@ The final clause would have a `nil` constant, a single-element array containing 
 def on_aryptn(const, preargs, splatarg, postargs); end
 ```
 
-## `assign`
+### `assign`
 
 `assign` is a parser event that represents assigning something to a variable or constant. Generally, the left side of the assignment is going to be any node that ends with the name `field` (see [naming](#naming)).
 
@@ -312,7 +312,7 @@ It accepts as arguments the left side of the expression before the equals sign a
 def on_assign(left, right); end
 ```
 
-## `assoc_new`
+### `assoc_new`
 
 `assoc_new` is a parser event that contains a key-value pair within a hash. It is a child event of either an [assoclist_from_args](#assoclist_from_args) or a [bare_assoc_hash](#bare_assoc_hash).
 
@@ -326,7 +326,7 @@ In the above example, the would be two `assoc_new` nodes. Each would contain a k
 def on_assoc_new(key, value); end
 ```
 
-## `assoc_splat`
+### `assoc_splat`
 
 `assoc_splat` is a parser event that represents double-splatting a value into a hash (either a hash literal or a bare hash in a method call).
 
@@ -340,7 +340,7 @@ Much like `assoc_new`, these nodes get added into an array that gets sent up to 
 def on_assoc_splat(contents); end
 ```
 
-## `assoclist_from_args`
+### `assoclist_from_args`
 
 `assoclist_from_args` is a parser event that represents the key-value pairs of a hash literal. Its parent node is always a hash.
 
@@ -354,7 +354,7 @@ The handler for this event accepts a single parameter: an array containing eithe
 def on_assoclist_from_args(assocs); end
 ```
 
-## `backref`
+### `backref`
 
 `backref` is a scanner event that represents a global variable referencing a matched value. It comes in the form of a $ followed by a positive integer.
 
@@ -368,7 +368,7 @@ The handler accepts a single string parameter containing the value as seen in th
 def on_backref(value); end
 ```
 
-## `backtick`
+### `backtick`
 
 `backtick` is a scanner event that represents the use of the \` operator. It's usually found being used for an [xstring_literal](#xstring_literal), but could also be found as the name of a method being defined.
 
@@ -382,7 +382,7 @@ The above example would trigger two `backtick` events. The handler accepts a sin
 def on_backtick(value); end
 ```
 
-## `bare_assoc_hash`
+### `bare_assoc_hash`
 
 `bare_assoc_hash` is a parser event that represents a hash of contents being passed as a method argument (and therefore has omitted braces). It's very similar to an [assoclist_from_args](#assoclist_from_args) event.
 
@@ -396,7 +396,7 @@ In the above example, the event would be triggered for the source bound between 
 def on_bare_assoc_hash(assocs); end
 ```
 
-## `begin`
+### `begin`
 
 `begin` is a parser event that represents the beginning of a `begin`..`end` chain.
 
@@ -412,7 +412,7 @@ The handler for this event accepts a single [bodystmt](#bodystmt) event that has
 def on_begin(bodystmt); end
 ```
 
-## `binary`
+### `binary`
 
 `binary` is a parser event that represents any expression that involves two sub-expressions with an operator in between. This can be something that looks like a mathematical operation:
 
@@ -432,7 +432,7 @@ The handler for this event accepts three parameters. The first and last represen
 def on_binary(left, operator, right); end
 ```
 
-## `block_var`
+### `block_var`
 
 `block_var` is a parser event that represents the parameters being declared for a block. Effectively this event is everything contained within the pipes. This includes all of the various parameter types, as well as block-local variable declarations. For example:
 
@@ -454,7 +454,7 @@ With this syntax, `local` becomes a variable local only to the block, and can sh
 def on_block_var(params, locals); end
 ```
 
-## `blockarg`
+### `blockarg`
 
 `blockarg` is a parser event that represents declaring a block parameter on a method definition.
 
@@ -468,7 +468,7 @@ In the above example, the `&block` would trigger a `blockarg` event. The handler
 def on_blockarg(ident); end
 ```
 
-## `bodystmt`
+### `bodystmt`
 
 `bodystmt` is a parser event that represents all of the possible combinations of clauses within the body of a method or do block. This means the regular statements and the optionally attached `rescue`, `else`, and `ensure` blocks. It can be passed up to any node that accepts these kinds of bodies like method definitions, lambdas using the `do` keyword, class and module definitions, singleton class scopes, and [begin](#begin) nodes. For example:
 
@@ -494,7 +494,7 @@ def on_bodystmt(stmts, rescued, ensured, elsed); end
 
 Note that it's difficult to determine the character bounds of this node since it doesn't necessarily know where it started. You can look at the first child node that you encounter, but that might be missing comments that conceptually "belong" to this node. To remedy this, if you need the chracter bounds you need to determine them in each of the parent event handlers.
 
-## `brace_block`
+### `brace_block`
 
 `brace_block` is a parser event that represents passing a block to a method call using the `{` `}` operators. For example:
 
@@ -509,7 +509,7 @@ The handler for this event accepts as arguments an optional [block_var](#block_v
 def on_brace_block(block_var, stmts); end
 ```
 
-## `break`
+### `break`
 
 `break` is a parser event that represents using the `break` keyword. For example:
 
@@ -524,7 +524,7 @@ The handler for this event accepts one parameter that is an [args_new](#args_new
 def on_break(args); end
 ```
 
-## `call`
+### `call`
 
 `call` is a parser event representing a method call. This event doesn't contain the arguments being passed (if arguments _are_ passed, this node will get nested under a [method_add_arg](#method_add_arg) node).
 
@@ -544,7 +544,7 @@ The handler for this event accepts as parameters the receiver of the message (wh
 def on_call(receiver, operator, message); end
 ```
 
-## `case`
+### `case`
 
 `case` is a parser event that represents the beginning of a `case` chain. For example:
 
@@ -577,7 +577,7 @@ The handler for this event accepts two parameters: the optional value that is be
 def on_case(switch, consequent); end
 ```
 
-## `class`
+### `class`
 
 `class` is a parser event that represents defining a class using the `class` keyword. For example:
 
@@ -622,7 +622,7 @@ The handler for this event accepts as parameters the name of the class (a [const
 def on_class(const, superclass, bodystmt); end
 ```
 
-## `comma`
+### `comma`
 
 `comma` is a scanner event that represents the use of the `,` operator. In general you don't necessarily need to handle this event, but it's useful for determining if the source is using trailing commas in literals or method calls.
 
@@ -639,7 +639,7 @@ The above example would trigger two `comma` events. The handler accepts a single
 def on_comma(value); end
 ```
 
-## `command`
+### `command`
 
 `command` is a parser event representing a method call with arguments and no parentheses. Note that `command` events only happen when there is no explicit receiver for this method, as in the following example:
 
@@ -653,7 +653,7 @@ The handler for this event accepts as arguments the name of the method (either a
 def on_command(message, args); end
 ```
 
-## `command_call`
+### `command_call`
 
 `command_call` is a parser event representing a method call on an object with arguments and no parentheses.
 
@@ -667,7 +667,7 @@ The handler for this event accepts as arguments the receiver of the method (any 
 def on_command_call(receiver, operator, method, args); end
 ```
 
-## `comment`
+### `comment`
 
 `comment` is a scanner event that represents a comment in source.
 
@@ -683,7 +683,7 @@ def on_comment(value); end
 
 Note that this is one of a few scanner events that give you a string value that can potentially extend beyond the range of ASCII. If there's a magic encoding comment at the top of the source that ripper is parsing (as in `# encoding: Shift_JIS`) then the encoding of the string being passed into the handler for this event will match it. If you're planning on serializing the resulting syntax tree in any way, it's important to handle the encoding change in this event handler.
 
-## `const`
+### `const`
 
 `const` is a scanner event that represents a literal value that _looks like_ a constant. This could actually be a reference to a constant:
 
@@ -709,7 +709,7 @@ The handler for this event accepts a single string parameter that contains the v
 def on_const(value); end
 ```
 
-## `const_path_field`
+### `const_path_field`
 
 `const_path_field` is a parser event that always represents the child node of some kind of assignment. It represents when you're assigning to a constant that is being referenced as a child of another variable. For example:
 
@@ -723,7 +723,7 @@ The handler for this event accepts two parameters. The first is the value to the
 def on_const_path_field(left, const); end
 ```
 
-## `const_path_ref`
+### `const_path_ref`
 
 `const_path_ref` is a parser event that is a very similar to [const_path_field](#const_path_field) except that it is not involved in an assignment. It looks like the following example:
 
@@ -737,7 +737,7 @@ The handler for this event is the same as [const_path_field](#const_path_field).
 def on_const_path_ref(left, const); end
 ```
 
-## `const_ref`
+### `const_ref`
 
 `const_ref` is a parser event that represents the name of the constant being used in a class or module declaration. In the following example it is the [const](#const) scanner event that has the contents of `Container`.
 
@@ -751,7 +751,7 @@ The handler for this event always accepts a single [const](#const) parameter.
 def on_const_ref(const); end
 ```
 
-## `cvar`
+### `cvar`
 
 `cvar` is a scanner event that represents the use of a class variable.
 
@@ -765,7 +765,7 @@ The handler for this event accepts a single string parameter that contains the n
 def on_cvar(value); end
 ```
 
-## `def`
+### `def`
 
 `def` is a parser event that represents defining a regular method on the current self object. It accepts as arguments an [ident](#ident) node (the name of the method being defined), a [params](#params) node (the parameter declaration for the method), and a [bodystmt](#bodystmt) node which represents the statements inside the method. As an example, here are the parts that go into this:
 
@@ -789,7 +789,7 @@ The handler for this event accepts the [ident](#ident) and optional [params](#pa
 def on_def(ident, params, body); end
 ```
 
-## `defined`
+### `defined`
 
 `defined` is a parser event that represents the use of the rather unique `defined?` operator. It can be used with and without parentheses.
 
@@ -803,7 +803,7 @@ The handler for this event accepts a single parameter that represents whatever R
 def on_defined(value); end
 ```
 
-## `defs`
+### `defs`
 
 `defs` is a parser event that represents defining a singleton method on an object. For example:
 
@@ -817,7 +817,7 @@ It accepts the same arguments as the [def](#def) event, as well as the target an
 def on_defs(target, operator, ident, params, body); end
 ```
 
-## `do_block`
+### `do_block`
 
 `do_block` is a parser event that represents passing a block to a method call using the `do` and `end` keywords.
 
@@ -832,7 +832,7 @@ The handler for this event accepts as arguments an optional [block_var](#block_v
 def on_do_block(block_var, bodystmt); end
 ```
 
-## `dot2`
+### `dot2`
 
 `dot2` is a parser event that represents using the `..` operator between two expressions. Usually this is to create a range object.
 
@@ -853,7 +853,7 @@ The handler for this event accepts two parameters representing the left and righ
 def on_dot2(left, right); end
 ```
 
-## `dot3`
+### `dot3`
 
 `dot3` is a parser event that represents using the `...` operator between two expressions. It's effectively the same event as the [dot2](#dot2) event but with this operator you're asking Ruby to omit the final value.
 
@@ -874,7 +874,7 @@ The handler for this event accepts two parameters representing the left and righ
 def on_dot3(left, right); end
 ```
 
-## `dyna_symbol`
+### `dyna_symbol`
 
 `dyna_symbol` is a parser event that represents a symbol literal that uses quotes to interpolate its value. For example, if you had a variable `variable` and you wanted a symbol that contained its value, you would write:
 
@@ -894,7 +894,7 @@ The handler for this event accepts one parameter which is either a [string_conte
 def on_dyna_symbol(contents); end
 ```
 
-## `else`
+### `else`
 
 `else` is a parser event that represents the end of a `if` or `unless` chain.
 
@@ -910,7 +910,7 @@ The handler for this event accepts a single [stmts_add](#stmts_add) node that re
 def on_else(stmts_add); end
 ```
 
-## `elsif`
+### `elsif`
 
 `elsif` is a parser event that represents another clause in an `if` or `unless` chain.
 
@@ -926,7 +926,7 @@ The handler for this event accepts the predicate to the `elsif` operator (any Ru
 def on_elsif(predicate, stmts_add, consequent); end
 ```
 
-## `embdoc`
+### `embdoc`
 
 `embdoc` is a scanner event that gets dispatched when the parser is inside a multi-line comment and receive a new line of content. For example, in the following multi-line comment, the `embdoc` event would be dispatched twice:
 
@@ -943,7 +943,7 @@ The handler for this event accepts a single string parameter containing the valu
 def on_embdoc(value); end
 ```
 
-## `embdoc_beg`
+### `embdoc_beg`
 
 `embdoc_beg` is a scanner event that represents the beginning of a multi-line comment.
 
@@ -959,7 +959,7 @@ In the above example, it represents the `=begin` string. The handler for this ev
 def on_embdoc_beg(value); end
 ```
 
-## `embdoc_end`
+### `embdoc_end`
 
 `embdoc_end` is a scanner event that represents the ending of a multi-line comment.
 
@@ -975,7 +975,7 @@ In the above example, it represents the `=end` string. The handler for this even
 def on_embdoc_end(value); end
 ```
 
-## `embexpr_beg`
+### `embexpr_beg`
 
 `embexpr_beg` is a scanner event that represents the beginning token for using interpolation inside of a parent node that accepts string content (like a string or regular expression).
 
@@ -989,7 +989,7 @@ The handler for this event accepts a single string parameter that always contain
 def on_embexpr_beg(value); end
 ```
 
-## `embexpr_end`
+### `embexpr_end`
 
 `embexpr_end` is a scanner event that represents the ending token for using interpolation inside of a parent node that accepts string content (like a string or regular expression).
 
@@ -1003,7 +1003,7 @@ The handler for this event accepts a single string parameter that always contain
 def on_embexpr_end(value); end
 ```
 
-## `embvar`
+### `embvar`
 
 `embvar` is a scanner event that represents the use of shorthand interpolation for an instance, class, or global variable into a parent node that accepts string content (like a string or regular expression).
 
@@ -1019,7 +1019,7 @@ def on_embvar(value); end
 
 Note that changing the return value of this method does not impact other event handlers since the result never gets passed up the tree.
 
-## `ensure`
+### `ensure`
 
 `ensure` is a parser event that represents the use of the `ensure` keyword and its subsequent statements.
 
@@ -1035,7 +1035,7 @@ The handler for this event accepts a single [stmts_add](#stmts_add) event that r
 def on_ensure(stmts_add); end
 ```
 
-## `excessed_comma`
+### `excessed_comma`
 
 `excessed_comma` is a parser event that represents a trailing comma in a list of block parameters. It changes the block parameters such that they will destructure.
 
@@ -1050,7 +1050,7 @@ In the above example, an `excessed_comma` node would appear in the third positio
 def on_excessed_comma; end
 ```
 
-## `fcall`
+### `fcall`
 
 `fcall` is a parser event that represents the piece of a method call that comes before any arguments (i.e., just the name of the method). It is used in places where the parser is sure that it _is_ a method call and not potentially a local variable.
 
@@ -1064,7 +1064,7 @@ In the above example, it's referring to the `method` segment. The handler for th
 def on_fcall(message); end
 ```
 
-## `field`
+### `field`
 
 `field` is a parser event that is always the child of an assignment. It represents assigning to a "field" on an object, as in:
 
@@ -1078,7 +1078,7 @@ The handler for this event accepts three parameters. The first is everything to 
 def on_field(left, operator, right); end
 ```
 
-## `float`
+### `float`
 
 `float` is a scanner event that represents a floating point value literal.
 
@@ -1092,7 +1092,7 @@ The handler for this event accepts a single string parameter that represents the
 def on_float(value); end
 ```
 
-## `fndptn`
+### `fndptn`
 
 `fndptn` is a parser event that represents matching against a pattern where you find a pattern in an array using the Ruby 3.0+ pattern matching syntax.
 
@@ -1110,7 +1110,7 @@ The handler for this event accepts four parameters. The first is an optional con
 def on_fndptn(const, presplat, values, postsplat); end
 ```
 
-## `for`
+### `for`
 
 `for` is a parser event that represents using a for loop.
 
@@ -1125,7 +1125,7 @@ The handler for this event accepts three parameters. The first represents the li
 def on_for(iterator, enumerable, stmts_add); end
 ```
 
-## `gvar`
+### `gvar`
 
 `gvar` is a scanner event that represents a global variable literal.
 
@@ -1139,7 +1139,7 @@ The handler for this event accepts a single string value that represents the var
 def on_gvar(value); end
 ```
 
-## `hash`
+### `hash`
 
 `hash` is a parser event that represents a hash literal.
 
@@ -1153,7 +1153,7 @@ The handler for this event accepts a single optional [assoclist_from_args](#asso
 def on_hash(assoclist_from_args); end
 ```
 
-## `heredoc_beg`
+### `heredoc_beg`
 
 `heredoc_beg` is a scanner event that represents the beginning of the heredoc.
 
@@ -1169,7 +1169,7 @@ In the above example, a `heredoc_beg` would get dispatched containing the `"<<~D
 def on_heredoc_beg(value); end
 ```
 
-## `heredoc_dedent`
+### `heredoc_dedent`
 
 `heredoc_dedent` is a parser event that occurs when you're using a heredoc with a tilde (otherwise known as a "squiggly" heredoc).
 
@@ -1185,7 +1185,7 @@ This event will get dispatched once when the `heredoc` is closed. The handler fo
 def on_heredoc_dedent(string_add, width); end
 ```
 
-## `heredoc_end`
+### `heredoc_end`
 
 `heredoc_end` is a scanner event that represents the end of the heredoc literal.
 
@@ -1201,7 +1201,7 @@ The handler for this event accepts a single string parameter that represents the
 def on_heredoc_end(value); end
 ```
 
-## `hshptn`
+### `hshptn`
 
 `hshptn` is a parser event that represents matching against a hash pattern using the Ruby 2.7+ pattern matching syntax.
 
@@ -1217,7 +1217,7 @@ The handler for this event accepts three parameters. The first is an optional co
 def on_hshptn(const, pairs, kwrest); end
 ```
 
-## `ident`
+### `ident`
 
 `ident` is a scanner event that represents an identifier anywhere in code. It can represent a very large number of things, depending on where it is in the syntax tree.
 
@@ -1231,7 +1231,7 @@ The handler for this event accepts a single string parameter representing the va
 def on_ident(value); end
 ```
 
-## `if`
+### `if`
 
 `if` is a parser event that represents the first clause in an `if` chain.
 
@@ -1246,7 +1246,7 @@ The handler for this event accepts three parameters. The first is any Ruby expre
 def on_if(predicate, stmts_add, consequent); end
 ```
 
-## `ifop`
+### `ifop`
 
 `ifop` is a parser event that represents a ternary clause.
 
@@ -1260,7 +1260,7 @@ The handler for this event accepts three parameters. The first is the predicate 
 def on_ifop(predicate, truthy, falsy); end
 ```
 
-## `if_mod`
+### `if_mod`
 
 `if_mod` is a parser event that represents the modifier form of an `if` statement.
 
@@ -1274,7 +1274,7 @@ The handler for this event accepts two parameters. The first is the predicate fo
 def on_if_mod(predicate, statement); end
 ```
 
-## `ignored_nl`
+### `ignored_nl`
 
 `ignored_nl` is a scanner event that represents a newline in the middle of a statement where it should be ignored. For example:
 
@@ -1289,7 +1289,7 @@ The `ignored_nl` event will get triggered on the newline between the first and s
 def on_ignored_nl(value); end
 ```
 
-## `ignored_sp`
+### `ignored_sp`
 
 `ignored_sp` is a scanner event that represents the space before the content of each line of a squiggly heredoc that will be removed from the string before it gets transformed into a string literal. For example:
 
@@ -1306,7 +1306,7 @@ In the above snippet, two `ignored_sp` event would be dispatched. The first woul
 def on_ignored_sp(value); end
 ```
 
-## `imaginary`
+### `imaginary`
 
 `imaginary` is a scanner event that represents an imaginary number literal.
 
@@ -1320,7 +1320,7 @@ The handler for this event accepts a single string parameter that represents the
 def on_imaginary(value); end
 ```
 
-## `in`
+### `in`
 
 `in` is a parser event that represents using the `in` keyword within the Ruby 2.7+ pattern matching syntax.
 
@@ -1350,7 +1350,7 @@ Note that for a single-line rightward pattern matching like the second example o
 def on_in(pattern, stmts_add, consequent); end
 ```
 
-## `int`
+### `int`
 
 `int` is a scanner event the represents a number literal.
 
@@ -1364,7 +1364,7 @@ The handler for this event accepts a single string parameter that represents the
 def on_int(value); end
 ```
 
-## `ivar`
+### `ivar`
 
 `ivar` is a scanner event the represents an instance variable literal.
 
@@ -1378,7 +1378,7 @@ The handler for this event accepts a single string parameter that represents the
 def on_ivar(value); end
 ```
 
-## `kw`
+### `kw`
 
 `kw` is a scanner event the represents the use of a keyword. It can be almost anywhere in the syntax tree, so you end up seeing it quite a lot.
 
@@ -1399,7 +1399,7 @@ then the contents of the [symbol](#symbol) node will contain a `kw` node. The ha
 def on_kw(value); end
 ```
 
-## `kwrest_param`
+### `kwrest_param`
 
 `kwrest_param` is a parser event that represents defining a parameter in a method definition that accepts all remaining keyword parameters.
 
@@ -1413,7 +1413,7 @@ The handler for this event accepts a single optional [ident](#ident) node that r
 def on_kwrest_param(ident); end
 ```
 
-## `label`
+### `label`
 
 `label` is a scanner event that represents the use of an identifier to associate with an object. You can find it in a hash key, as in:
 
@@ -1437,7 +1437,7 @@ The handler for this event accepts a single string parameter that represents the
 def on_label(value); end
 ```
 
-## `label_end`
+### `label_end`
 
 `label_end` is a scanner event that represents the end of a dynamic symbol. If for example you had the following hash:
 
@@ -1451,7 +1451,7 @@ then the string `"\":"` would be the value of this `label_end`. The handler for 
 def on_label_end(value); end
 ```
 
-## `lambda`
+### `lambda`
 
 `lambda` is a parser event that represents using a lambda literal (_not_ the `lambda` method call).
 
@@ -1465,7 +1465,7 @@ The handler for this event accepts parameters a [params](#params) node (which ca
 def on_lambda(params, stmts); end
 ```
 
-## `lbrace`
+### `lbrace`
 
 `lbrace` is a scanner event representing the use of a left brace, i.e., `{`.
 
@@ -1475,7 +1475,7 @@ The handler for this event accepts a single string parameter that is always `"{"
 def on_lbrace(value); end
 ```
 
-## `lbracket`
+### `lbracket`
 
 `lbracket` is a scanner event representing the use of a left bracket, i.e., `[`.
 
@@ -1485,7 +1485,7 @@ The handler for this event accepts a single string parameter that is always `"["
 def on_lbracket(value); end
 ```
 
-## `lparen`
+### `lparen`
 
 `lparen` is a scanner event representing the use of a left parenthesis, i.e., `(`.
 
@@ -1495,7 +1495,7 @@ The handler for this event accepts a single string parameter that is always `"("
 def on_lparen(value); end
 ```
 
-## `magic_comment`
+### `magic_comment`
 
 `magic_comment` is a scanner event that represents the use of a pragma at the beginning of the file. Usually it will include something like
 `frozen_string_literal` (the key) with a value of `true` (the value). It can also take multiple other forms though if using the `-*-` emacs-style file pragmas. Note that it's not just known values that dispatch this event, anything that matches a specific pattern will as well.
@@ -1512,7 +1512,7 @@ def on_magic_comment(key, value); end
 
 Note that the return value of this method will be passed immediately up into the [comment](#comment) event handler. So it is possible to skip this handler definition entirely and just process it in the comments handler.
 
-## `massign`
+### `massign`
 
 `massign` is a parser event that is a parent node of any kind of multiple assignment. This includes splitting out variables on the left like:
 
@@ -1538,7 +1538,7 @@ In this case a would receive only the first value of the `value` enumerable. The
 def on_massign(left, right); end
 ```
 
-## `method_add_arg`
+### `method_add_arg`
 
 `method_add_arg` is a parser event that represents a method call with arguments and parentheses.
 
@@ -1566,7 +1566,7 @@ In that case, the second parameter would be an [args_new](#args_new) event.
 def on_method_add_arg(method, args); end
 ```
 
-## `method_add_block`
+### `method_add_block`
 
 `method_add_block` is a parser event that represents a method call with a block argument.
 
@@ -1588,7 +1588,7 @@ The second parameter will always be a [brace_block](#brace_block) or a [do_block
 def on_method_add_block(method, block); end
 ```
 
-## `mlhs_add`
+### `mlhs_add`
 
 `mlhs_add` is a parser event that represents adding another variable onto a list of variables within a multiple assignment.
 
@@ -1607,7 +1607,7 @@ In the above example, three `mlhs_add` events would be dispatched. The handler f
 def on_mlhs_add(mlhs, part); end
 ```
 
-## `mlhs_new`
+### `mlhs_new`
 
 `mlhs_new` is a parser event that represents the beginning of the left side of a multiple assignment. It is followed by any number of [mlhs_add](#mlhs_add) nodes that each represent another variable being assigned.
 
@@ -1621,7 +1621,7 @@ In the above example, the `mlhs_new` event would be dispatched just before the `
 def on_mlhs_new; end
 ```
 
-## `mlhs_add_post`
+### `mlhs_add_post`
 
 `mlhs_add_post` is a parser event that represents adding another set of variables onto a list of assignments after a splat variable within a multiple assignment.
 
@@ -1635,7 +1635,7 @@ In the example above, an `mlhs_add_post` event would be dispatched when the pars
 def on_mlhs_add_post(mlhs_add_star, mlhs_add); end
 ```
 
-## `mlhs_add_star`
+### `mlhs_add_star`
 
 `mlhs_add_star` is a parser event that represents a splatted variable inside of a multiple assignment on the left hand side.
 
@@ -1649,7 +1649,7 @@ The handler for this event accepts two parameters. The first is the result of th
 def on_mlhs_add_star(mlhs, part); end
 ```
 
-## `mlhs_paren`
+### `mlhs_paren`
 
 `mlhs_paren` is a parser event that represents parentheses being used to destruct values in a multiple assignment on the left hand side.
 
@@ -1663,7 +1663,7 @@ The handler for this event accepts one parameter which represents the value cont
 def on_mlhs_paren(contents); end
 ```
 
-## `module`
+### `module`
 
 `module` is a parser event that represents defining a module using the `module` keyword.
 
@@ -1678,7 +1678,7 @@ The handler for this event accepts one parameter for the name of the module (a [
 def on_module(const, bodystmt); end
 ```
 
-## `mrhs_add`
+### `mrhs_add`
 
 `mrhs_add` is a parser event that represents adding another value onto a list on the right hand side of a multiple assignment.
 
@@ -1692,7 +1692,7 @@ In the example above, three `mrhs_add` events would be dispatched, one for each 
 def on_mrhs_add(mrhs, part); end
 ```
 
-## `mrhs_new`
+### `mrhs_new`
 
 `mrhs_new` is a parser event that represents the beginning of a list of values that are being assigned within a multiple assignment node. It can be followed by any number of [mrhs_add](#mrhs_add) nodes.
 
@@ -1706,7 +1706,7 @@ In the example above, an `mrhs_new` event would be dispatched when the parser hi
 def on_mrhs_new; end
 ```
 
-## `mrhs_add_star`
+### `mrhs_add_star`
 
 `mrhs_add_star` is a parser event that represents using the splat operator to expand out a value on the right hand side of a multiple assignment.
 
@@ -1720,7 +1720,7 @@ The handler for this event accepts two parameters. The first is either an [mrhs_
 def on_mrhs_add_star(mrhs, part); end
 ```
 
-## `mrhs_new_from_args`
+### `mrhs_new_from_args`
 
 `mrhs_new_from_args` is a parser event that represents the shorthand of a multiple assignment that allows you to assign values using just commas as opposed to assigning from an array. For example, in the following segment the right hand side of the assignment would dispatch this event:
 
@@ -1734,7 +1734,7 @@ The handler for this event accepts a single [args_add](#args_add) or [args_add_s
 def on_mrhs_new_from_args(args); end
 ```
 
-## `next`
+### `next`
 
 `next` is a parser event that represents using the `next` keyword.
 
@@ -1766,7 +1766,7 @@ The handler for this event accepts a single parameter that represents the type o
 def on_next(args); end
 ```
 
-## `nl`
+### `nl`
 
 `nl` is a scanner event representing a newline in the source. As you can imagine, it gets dispatched quite often, so take care if you're defining this method manually. 
 
@@ -1776,7 +1776,7 @@ The handler for this event accepts a single string parameter that always contain
 def on_nl(value); end
 ```
 
-## `nokw_param`
+### `nokw_param`
 
 `nokw_param` is a parser event that represents the use of the Ruby 2.7+ syntax to indicate a method should take no additional keyword arguments. For example in the following snippet:
 
@@ -1792,7 +1792,7 @@ def on_nokw_param(value); end
 
 The result of this event handler will get passed up to the event handler for the [params](#params) node that it is a part of in the `kwrest` position.
 
-## `op`
+### `op`
 
 `op` is a scanner event representing an operator literal in the source. For example, in the following snippet:
 
@@ -1806,7 +1806,7 @@ In the example above, the `+` operator would dispatch this event. The handler fo
 def on_op(value); end
 ```
 
-## `opassign`
+### `opassign`
 
 `opassign` is a parser event that represents assigning a value to a variable or constant using an operator like `+=` or `||=`.
 
@@ -1820,7 +1820,7 @@ The handler for this event accepts three parameters. The first is the left side 
 def on_opassign(left, operator, right); end
 ```
 
-## `operator_ambiguous`
+### `operator_ambiguous`
 
 `operator_ambiguous` is a parser event that represents when the parser sees an operator as ambiguous. For example, in the following snippet:
 
@@ -1834,7 +1834,7 @@ the question becomes if the percent sign is being used as a method call or if it
 def on_operator_ambiguous(operator, ambiguity); end
 ```
 
-## `params`
+### `params`
 
 `params` is a parser event that represents defining parameters on a method or lambda.
 
@@ -1858,7 +1858,7 @@ Note that the shorthands above come from calling the `Method#parameters` method.
 def on_params(req, opts, rest, post, keys, keyrest, block); end
 ```
 
-## `paren`
+### `paren`
 
 `paren` is a parser event that represents using balanced parentheses in a couple places in a Ruby program. In general parentheses can be used anywhere a Ruby expression can be used.
 
@@ -1872,7 +1872,7 @@ The handler for this event accepts a single parameter that represents the expres
 def on_paren(contents); end
 ```
 
-## `period`
+### `period`
 
 `period` is a scanner event that represents the use of the `.` operator. It is usually found in method calls.
 
@@ -1882,7 +1882,7 @@ The handler for this event accepts a single string parameter that always contain
 def on_period(value); end
 ```
 
-## `program`
+### `program`
 
 `program` is a parser event that represents the overall syntax tree. It will always be called when a Ripper parser is used.
 
@@ -1892,7 +1892,7 @@ The handler for this event accepts a single [stmts_add](#stmts_add) node that re
 def on_program(stmts_add); end
 ```
 
-## `qsymbols_beg`
+### `qsymbols_beg`
 
 `qsymbols_beg` is a scanner event that represents the beginning of a symbol literal array. For example:
 
@@ -1906,7 +1906,7 @@ In the snippet above, a `qsymbols_beg` event would be dispatched with the value 
 def on_qsymbols_beg(value); end
 ```
 
-## `qsymbols_add`
+### `qsymbols_add`
 
 `qsymbols_add` is a parser event that represents adding an element to a symbol literal array.
 
@@ -1922,7 +1922,7 @@ The handler for this event accepts the current list of symbols (as a [qsymbols_n
 def on_qsymbols_add(qsymbols, tstring_content); end
 ```
 
-## `qsymbols_new`
+### `qsymbols_new`
 
 `qsymbols_new` is a parser event that represents the beginning of a symbol literal array.
 
@@ -1936,7 +1936,7 @@ In the axample above, a `qsymbols_new` event would be dispatched when the parser
 def on_qsymbols_new; end
 ```
 
-## `qwords_beg`
+### `qwords_beg`
 
 `qwords_beg` is a scanner event that represents the beginning of a string literal array. For example:
 
@@ -1950,7 +1950,7 @@ In the snippet above, a `qwords_beg` event would be dispatched with the value of
 def on_qwords_beg(value); end
 ```
 
-## `qwords_add`
+### `qwords_add`
 
 `qwords_add` is a parser event that represents adding an element to a string literal array.
 
@@ -1966,7 +1966,7 @@ The handler for this event accepts the current list of strings (as a [qwords_new
 def on_qwords_add(qwords, tstring_content); end
 ```
 
-## `qwords_new`
+### `qwords_new`
 
 `qwords_new` is a parser event that represents the beginning of a string literal array.
 
@@ -1980,7 +1980,7 @@ In the axample above, a `qwords_new` event would be dispatched when the parser f
 def on_qwords_new; end
 ```
 
-## `rational`
+### `rational`
 
 `rational` is a scanner event that represents the use of a rational number literal.
 
@@ -1994,7 +1994,7 @@ The handler for this event accepts a single string parameter representing the va
 def on_rational(value); end
 ```
 
-## `rbrace`
+### `rbrace`
 
 `rbrace` is a scanner event that represents the use of a right brace, i.e., `}`.
 
@@ -2004,7 +2004,7 @@ The handler for this event accepts a single string parameter that always contain
 def on_rbrace(value); end
 ```
 
-## `rbracket`
+### `rbracket`
 
 `rbracket` is a scanner event that represents the use of a right bracket, i.e., `]`.
 
@@ -2014,7 +2014,7 @@ The handler for this event accepts a single string parameter that always contain
 def on_rbracket(value); end
 ```
 
-## `redo`
+### `redo`
 
 `redo` is a parser event that represents the use of the `redo` keyword.
 
@@ -2028,7 +2028,7 @@ The handler for this event accepts no parameters as the `redo` keyword accepts n
 def on_redo; end
 ```
 
-## `regexp_add`
+### `regexp_add`
 
 `regexp_add` is a parser event that represents a piece of a regular expression body.
 
@@ -2044,7 +2044,7 @@ The handler for this event accepts two parameters. The first is the result of th
 def on_regexp_add(regexp, part); end
 ```
 
-## `regexp_beg`
+### `regexp_beg`
 
 `regexp_beg` is a scanner event that represents the start of a regular expression literal.
 
@@ -2064,7 +2064,7 @@ The handler for this event accepts a single string parameter that represents the
 def on_regexp_beg(value); end
 ```
 
-## `regexp_end`
+### `regexp_end`
 
 `regexp_end` is a scanner event that represents the end of a regular expression literal.
 
@@ -2084,7 +2084,7 @@ The handler for this event accepts a single string parameter that represents the
 def on_regexp_end(value); end
 ```
 
-## `regexp_literal`
+### `regexp_literal`
 
 `regexp_literal` is a parser event that represents a regular expression literal.
 
@@ -2098,7 +2098,7 @@ The handler for this event accepts two parameters. The first is either a [regexp
 def on_regexp_literal(regexp, ending); end
 ```
 
-## `regexp_new`
+### `regexp_new`
 
 `regexp_new` is a parser event that represents the beginning of a regular expression literal.
 
@@ -2112,7 +2112,7 @@ In the example above, a `regexp_new` event would be dispatched just before the `
 def on_regexp_new; end
 ```
 
-## `rescue`
+### `rescue`
 
 `rescue` is a parser event that represents the use of the `rescue` keyword inside of a [bodystmt](#bodystmt) node.
 
@@ -2153,7 +2153,7 @@ The handler for this event accepts four parameters. The first is the list of exc
 def on_rescue(exceptions, variable, stmts_add, consequent); end
 ```
 
-## `rescue_mod`
+### `rescue_mod`
 
 `rescue_mod` is a parser event that represents the using modifier form of a `rescue` clause.
 
@@ -2167,7 +2167,7 @@ The handler for this event accepts one parameter for the statement that is being
 def on_rescue_mod(statement, rescued); end
 ```
 
-## `rest_param`
+### `rest_param`
 
 `rest_param` is a parser event that represents defining a parameter in a method definition that accepts all remaining positional parameters.
 
@@ -2181,7 +2181,7 @@ The handler for this event accepts a single optional [ident](#ident) parameter t
 def on_rest_param(ident); end
 ```
 
-## `retry`
+### `retry`
 
 `retry` is a parser event that represents the use of the `retry` keyword.
 
@@ -2195,7 +2195,7 @@ The handler for this event accepts no parameters as the `retry` keyword accepts 
 def on_retry; end
 ```
 
-## `return`
+### `return`
 
 `return` is a parser event that represents using the return keyword with arguments.
 
@@ -2209,7 +2209,7 @@ The handler for this event accepts a single [args_add_block](#args_add_block) ev
 def on_return(args_add_block); end
 ```
 
-## `return0`
+### `return0`
 
 `return0` is a parser event that represents the bare return keyword.
 
@@ -2223,7 +2223,7 @@ The handler for this event accepts no parameters.
 def on_return0; end
 ```
 
-## `rparen`
+### `rparen`
 
 `rparen` is a scanner event that represents the use of a right parenthesis, i.e., `)`.
 
@@ -2233,7 +2233,7 @@ The handler for this event accepts a single string parameter that always contain
 def on_rparen(value); end
 ```
 
-## `sclass`
+### `sclass`
 
 `sclass` is a parser event that represents a block of statements that should be evaluated within the context of the singleton class of an object. It's frequently used to define singleton methods. It looks like the following example:
 
@@ -2248,7 +2248,7 @@ The handler for this event accepts two parameters. The first is the object whose
 def on_sclass(object, bodystmt); end
 ```
 
-## `semicolon`
+### `semicolon`
 
 `semicolon` is a scanner event that represents the use of a semicolon in the source.
 
@@ -2262,7 +2262,7 @@ The handler for this event accepts a single string parameter that always contain
 def on_semicolon(value); end
 ```
 
-## `sp`
+### `sp`
 
 `sp` is a scanner event that represents the use of a space in the source. As you can imagine, this event gets triggered quite often, so take care when manually defining the event handler for this event.
 
@@ -2272,7 +2272,7 @@ The handler for this event accepts a single string parameter that always contain
 def on_sp(value); end
 ```
 
-## `stmts_add`
+### `stmts_add`
 
 `stmts_add` is a parser event that represents a single statement inside a list of statements within any lexical block.
 
@@ -2303,7 +2303,7 @@ Lots of different nodes function as wrappers around lists of statements (`stmts_
 * [when](#when)
 * [while](#while)
 
-## `stmts_new`
+### `stmts_new`
 
 `stmts_new` is a parser event that represents the beginning of a list of statements within any lexical block. It can be followed by any number of `stmts_add` events.
 
@@ -2313,7 +2313,7 @@ The handler for this event accepts no parameters as it's the start of a list.
 def on_stmts_new; end
 ```
 
-## `string_add`
+### `string_add`
 
 `string_add` is a parser event that represents adding a section onto a string.
 
@@ -2329,7 +2329,7 @@ The handler for this event accepts two parameters. The first is a [string_conten
 def on_string_add(string, part); end
 ```
 
-## `string_concat`
+### `string_concat`
 
 `string_concat` is a parser event that represents concatenating two strings together using a backward slash, as in the following example:
 
@@ -2344,7 +2344,7 @@ The handler for this event accepts two parameters. The first is either a `string
 def on_string_concat(left, right); end
 ```
 
-## `string_content`
+### `string_content`
 
 `string_content` is a parser event that represents the beginning of the contents of a string.
 
@@ -2358,7 +2358,7 @@ In the example above, a `string_content` event would be dispatched when the pars
 def on_string_content; end
 ```
 
-## `string_dvar`
+### `string_dvar`
 
 `string_dvar` is a parser event that represents shorthand interpolation of a variable into a string. It allows you to take an instance variable, class variable, or global variable and omit the braces when interpolating. For example, if you wanted to interpolate the instance variable `@variable` into a string, you would write:
 
@@ -2372,7 +2372,7 @@ The handler for this event accepts a single parameter that represents the variab
 def on_string_dvar(variable); end
 ```
 
-## `string_embexpr`
+### `string_embexpr`
 
 `string_embexpr` is a parser event that represents interpolated content. It can be contained within a couple of different parent nodes, including regular expressions, strings, and dynamic symbols.
 
@@ -2386,7 +2386,7 @@ The handler for this event accepts a single [stmts_add](#stmts_add) node represe
 def on_string_embexpr(stmts_add); end
 ```
 
-## `string_literal`
+### `string_literal`
 
 `string_literal` is a parser event that represents a string literal.
 
@@ -2408,7 +2408,7 @@ The handler for this event accepts a single [string_content](#string_content) no
 def on_string_literal(string); end
 ```
 
-## `super`
+### `super`
 
 `super` is a parser event that represents using the `super` keyword with arguments. It can optionally use parentheses.
 
@@ -2422,7 +2422,7 @@ The handler for this event accepts a single parameter that represents the argume
 def on_super(args); end
 ```
 
-## `symbeg`
+### `symbeg`
 
 `symbeg` is a scanner event that represents the beginning of a symbol literal.
 
@@ -2448,7 +2448,7 @@ The handler for this event accepts a single string parameter. In most cases (as 
 def on_symbeg(value); end
 ```
 
-## `symbol`
+### `symbol`
 
 `symbol` is a parser event that immediately descends from a [symbol_literal](#symbol_literal).
 
@@ -2462,7 +2462,7 @@ The handler for this event accepts a single node that represents the contents of
 def on_symbol(contents); end
 ```
 
-## `symbol_literal`
+### `symbol_literal`
 
 `symbol_literal` is a parser event that represents a symbol in the system with no interpolation (as opposed to a [dyna_symbol](#dyna_symbol)).
 
@@ -2476,7 +2476,7 @@ The handler for this event accepts a single parameter. In most cases it is a [sy
 def on_symbol_literal(contents); end
 ```
 
-## `symbols_add`
+### `symbols_add`
 
 `symbols_add` is a parser event that represents adding an element to a symbol literal array with interpolation.
 
@@ -2492,7 +2492,7 @@ The handler for this event accepts the current list of symbols (as a [symbols_ne
 def on_symbols_add(qsymbols, word_add); end
 ```
 
-## `symbols_beg`
+### `symbols_beg`
 
 `symbols_beg` is a scanner event that represents the start of a symbol literal array with interpolation. For example, in the following snippet:
 
@@ -2506,7 +2506,7 @@ In the snippet above, a `symbols_beg` event would be dispatched with the value o
 def on_symbols_beg(value)
 ```
 
-## `symbols_new`
+### `symbols_new`
 
 `symbols_new` is a parser event that represents the beginning of a symbol literal array with interplation.
 
@@ -2520,7 +2520,7 @@ In the example above, a `symbols_new` event would be dispatched when the parser 
 def on_symbols_new; end
 ```
 
-## `tlambda`
+### `tlambda`
 
 `tlambda` is a scanner event that represents the beginning of a lambda literal.
 
@@ -2534,7 +2534,7 @@ In the example above it represents the `->` operator. The handler for this event
 def on_tlambda(value); end
 ```
 
-## `tlambeg`
+### `tlambeg`
 
 `tlambeg` is a scanner event that represents the beginning of the body of a lambda literal using braces.
 
@@ -2548,7 +2548,7 @@ In the example above it represents the `{` operator. The handler for this event 
 def on_tlambeg(value); end
 ```
 
-## `top_const_field`
+### `top_const_field`
 
 `top_const_field` is a parser event that is always the child of some kind of assignment. It represents when you're assigning to a constant that is being referenced at the top level. For example:
 
@@ -2562,7 +2562,7 @@ The handler for this event accepts a single [const](#const) parameter that repre
 def on_top_const_field(const); end
 ```
 
-## `top_const_ref`
+### `top_const_ref`
 
 `top_const_ref` is a parser event that is a very similar to [top_const_field](#top_const_field) except that it is not involved in an assignment. It looks like the following example:
 
@@ -2576,7 +2576,7 @@ The handler for this event accepts a single [const](#const) parameter that repre
 def on_top_const_ref(const); end
 ```
 
-## `tstring_beg`
+### `tstring_beg`
 
 `tstring_beg` is a scanner event that represents the beginning of a string literal.
 
@@ -2596,7 +2596,7 @@ The handler for this event accepts a single string parameter that represents the
 def on_tstring_beg(value); end
 ```
 
-## `tstring_content`
+### `tstring_content`
 
 `tstring_content` is a scanner event that represents plain characters inside of an entity that accepts string content like a string, heredoc, command string, or regular expression.
 
@@ -2610,7 +2610,7 @@ In the example above, a `tstring_content` event would be dispatched for the `str
 def on_tstring_content(value); end
 ```
 
-## `tstring_end`
+### `tstring_end`
 
 `tstring_end` is a scanner event that represents the end of a string literal.
 
@@ -2630,7 +2630,7 @@ The handler for this event accepts a single string parameter representing the en
 def on_tstring_end(value); end
 ```
 
-## `unary`
+### `unary`
 
 `unary` is a parser event that represents a unary method being called on an expression, as in `!`, `~`, or `not`.
 
@@ -2644,7 +2644,7 @@ The handler for this event accepts a parameter for the operator being used (in t
 def on_unary(operator, value); end
 ```
 
-## `undef`
+### `undef`
 
 `undef` is a parser event that represents the use of the `undef` keyword.
 
@@ -2658,7 +2658,7 @@ The handler for this event accepts a single array parameter that represents all 
 def on_undef(methods); end
 ```
 
-## `unless`
+### `unless`
 
 `unless` is a parser event that represents the first clause in an `unless` chain.
 
@@ -2673,7 +2673,7 @@ The handler for this event accepts three parameters. The first is the predicate 
 def on_unless(predicate, stmts_add, consequent); end
 ```
 
-## `unless_mod`
+### `unless_mod`
 
 `unless_mod` is a parser event that represents the modifier form of an `unless` statement.
 
@@ -2687,7 +2687,7 @@ The handler for this event accepts two parameters. The first is the predicate be
 def on_unless_mod(predicate, statement); end
 ```
 
-## `until`
+### `until`
 
 `until` is a parser event that represents an `until` loop.
 
@@ -2702,7 +2702,7 @@ The handler for this event accepts two parameters. The first is the predicate fo
 def on_until(predicate, stmts_add); end
 ```
 
-## `until_mod`
+### `until_mod`
 
 `until_mod` is a parser event that represents the modifier form of an `until` loop.
 
@@ -2716,7 +2716,7 @@ The handler for this event accepts a parameter for the predicate to the `until` 
 def on_until_mod(predicate, statement); end
 ```
 
-## `var_alias`
+### `var_alias`
 
 `var_alias` is a parser event that represents when you're using the `alias` keyword with global variable arguments.
 
@@ -2730,7 +2730,7 @@ The handler for this event accepts two parameters. The first is always a [gvar](
 def on_var_alias(left, right); end
 ```
 
-## `var_field`
+### `var_field`
 
 `var_field` is a parser event that represents a variable that is being assigned a value. As such, it is always a child of an assignment type node. For example:
 
@@ -2746,7 +2746,7 @@ def on_var_field(ident); end
 
 Note that there are a few cases where the ident can be omitted, as in the case that you're using a single splat operator without a name.
 
-## `var_ref`
+### `var_ref`
 
 `var_ref` is a parser event that represents a variable reference.
 
@@ -2762,7 +2762,7 @@ The handler for this event accepts a single scanner event parameter representing
 def on_var_ref(contents); end
 ```
 
-## `vcall`
+### `vcall`
 
 `vcall` nodes are any plain named object with Ruby that could be either a local variable or a method call.
 
@@ -2776,7 +2776,7 @@ The handler for this event accepts a single [ident](#ident) node that represents
 def on_vcall(ident); end
 ```
 
-## `void_stmt`
+### `void_stmt`
 
 `void_stmt` is a special kind of parser event that represents an empty lexical block of code.
 
@@ -2790,7 +2790,7 @@ In the example above, there is a `void_stmt` between the two semicolons. The han
 def on_void_stmt; end
 ```
 
-## `when`
+### `when`
 
 `when` is a parser event that represents another clause in a `case` chain.
 
@@ -2806,7 +2806,7 @@ The handler for this event accepts three parameters. The first is the predicate 
 def on_when(predicate, stmts_add, consequent); end
 ```
 
-## `while`
+### `while`
 
 `while` is a parser event that represents a `while` loop.
 
@@ -2821,7 +2821,7 @@ The handler for this event accepts two parameters. The first is the predicate fo
 def on_while(predicate, stmts_add); end
 ```
 
-## `while_mod`
+### `while_mod`
 
 `while_mod` is a parser event that represents the modifier form of an `while` loop.
 
@@ -2835,7 +2835,7 @@ The handler for this event accepts a parameter for the predicate to the `while` 
 def on_while_mod(predicate, statement); end
 ```
 
-## `word_add`
+### `word_add`
 
 `word_add` is a parser event that represents a piece of a word within a special array literal that accepts interpolation.
 
@@ -2851,7 +2851,7 @@ The handler for this event accepts the accumulated word (either a `word_add` or 
 def on_word_add(word, part); end
 ```
 
-## `word_new`
+### `word_new`
 
 `word_new` is a parser event that represents the beginning of a word within a special array literal (either strings or symbols) that accepts interpolation. For example, in the following array, there are three word nodes:
 
@@ -2865,7 +2865,7 @@ Each word inside that array is represented as its own node, which is in terms of
 def on_word_new; end
 ```
 
-## `words_beg`
+### `words_beg`
 
 `words_beg` is a scanner event that represents the beginning of a string literal array with interpolation. For example:
 
@@ -2879,7 +2879,7 @@ In the snippet above, a `words_beg` event would be dispatched with the value of 
 def on_words_beg(value); end
 ```
 
-## `words_add`
+### `words_add`
 
 `words_add` is a parser event that represents adding an element to a string literal array with interpolation.
 
@@ -2895,7 +2895,7 @@ The handler for this event accepts the current list of strings (as a [words_new]
 def on_words_add(words, word_add); end
 ```
 
-## `words_new`
+### `words_new`
 
 `words_new` is a parser event that represents the beginning of a string literal array with interpolation.
 
@@ -2909,7 +2909,7 @@ In the example above, a `words_new` event would be dispatched when the parser fi
 def on_words_new; end
 ```
 
-## `words_sep`
+### `words_sep`
 
 `words_sep` is a scanner event that represents the separation between two words inside of a word literal array. It contains any amount of whitespace characters that are used to delimit the words. For example,
 
@@ -2927,7 +2927,7 @@ In the snippet above there would be two `words_sep` events dispatched, one betwe
 def on_words_sep(value); end
 ```
 
-## `xstring_add`
+### `xstring_add`
 
 `xstring_add` is a parser event that represents appending a part of a string of commands that gets sent out to the terminal.
 
@@ -2941,7 +2941,7 @@ The handler for this event accepts two parameters. The first is either an [xstri
 def on_xstring_add(xstring, part); end
 ```
 
-## `xstring_new`
+### `xstring_new`
 
 `xstring_new` is a parser event that represents the beginning of a string of commands that gets sent out to the terminal.
 
@@ -2955,7 +2955,7 @@ The handler for this event accepts no parameters, as it is the start of a list.
 def on_xstring_new; end
 ```
 
-## `xstring_literal`
+### `xstring_literal`
 
 `xstring_literal` is a parser event that represents a string of commands that gets sent to the terminal.
 
@@ -2977,7 +2977,7 @@ The handler for this event accepts a single [xstring_new](#xstring_new) node (if
 def on_xstring_literal(xstring); end
 ```
 
-## `yield`
+### `yield`
 
 `yield` is a parser event that represents using the `yield` keyword with arguments.
 
@@ -2991,7 +2991,7 @@ The handler for this event accepts a single [args_add_block](#args_add_block) ev
 def on_yield(args); end
 ```
 
-## `yield0`
+### `yield0`
 
 `yield0` is a parser event that represents the bare `yield` keyword.
 
@@ -3005,7 +3005,7 @@ The handler for this event accepts no parameters. This is as opposed to the `yie
 def on_yield0; end
 ```
 
-## `zsuper`
+### `zsuper`
 
 `zsuper` is a parser event that represents the bare `super` keyword.
 

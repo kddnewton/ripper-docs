@@ -1,4 +1,4 @@
-# Lists
+## Lists
 
 Often your Ruby code will contain a variable-length list of items, like parameters to a method call, items in an array, or statements inside a block. Ripper doesn't use variable-length events. Instead, every event has a fixed number of items.
 

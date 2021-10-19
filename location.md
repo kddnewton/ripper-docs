@@ -1,8 +1,8 @@
-# Location
+## Location
 
 For a lot of tools that interact with a syntax tree, you will need information about where every node comes from in the source code. For that, `Ripper` provides two methods: `lineno` and `column`. These methods have a lot of nuance, however, so it's important to know what they're actually referring to.
 
-## `lineno`
+### `lineno`
 
 `lineno` refers to line number that is stored in the internal parser state as it is parsing. It has different behavior depending on if you're handling a scanner event or a parser event. Note that line-numbers are 1-indexed (the first line in the file is line 1, not 0).
 
@@ -10,7 +10,7 @@ If you're handling a scanner event, the `lineno` is always going to be the line 
 
 If you're handling a parser event, then `lineno` will be the line number that the parser is looking at when the production rule that you're referencing is reduced. Note that this is not necessarily the line number of the final token in the rule.
 
-## `column`
+### `column`
 
 `column` refers to the byte offset that is stored in the internal parser state as it is parsing an individual line. Similar to how it works for `lineno`, it has different behavior depending on the kind of event you're handling.
 

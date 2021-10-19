@@ -1,4 +1,4 @@
-# Ripper
+## Ripper
 
 Ripper is a Ruby standard library that acts as an event-based Ruby script parser. It can be used to gather information about Ruby scripts without running them. It can also generate [syntax trees](https://en.wikipedia.org/wiki/Abstract_syntax_tree) from source code.
 
