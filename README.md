@@ -516,7 +516,7 @@ def on_args_new; end
 %I[one two three]
 ```
 
-In order, the child node types coming in would be `nil`, [args](#args), [args_add_star](#args_add_star), [qwords](#qwords), [qsymbols](#qsymbols), [words](#words), and [symbols](#symbols). The handler for this event should account for those various types.
+In order, the child node types coming in would be `nil`, [args_add](#args_add), [args_add_star](#args_add_star), [qwords_add](#qwords_add), [qsymbols_add](#qsymbols_add), [words_add](#words_add), and [symbols_add](#symbols_add). The handler for this event should account for those various types.
 
 ```ruby
 def on_array(contents); end
@@ -2744,7 +2744,7 @@ def on_symbols_beg(value)
 %I[one two three]
 ```
 
-In the axample above, a `symbols_new` event would be dispatched when the parser finds the `one` token. It can be followed by any number of [symbols_add](#symbols_add) events. The handler for this event accepts no parameters, as it's the start of a list.
+In the example above, a `symbols_new` event would be dispatched when the parser finds the `one` token. It can be followed by any number of [symbols_add](#symbols_add) events. The handler for this event accepts no parameters, as it's the start of a list.
 
 ```ruby
 def on_symbols_new; end
@@ -2806,531 +2806,450 @@ The handler for this event accepts a single [const](#const) parameter that repre
 def on_top_const_ref(const); end
 ```
 
+### `tstring_beg`
+
+`tstring_beg` is a scanner event that represents the beginning of a string literal.
+
+```ruby
+"string"
+```
+
+In the example above, a `tstring_beg` event would be dispatched when the parser encounters the `"` token. Strings can also use single quotes. They can also be declared using the `%q` and `%Q` syntax, as in:
+
+```ruby
+%q{string}
+```
+
+The handler for this event accepts a single string parameter that represents the start of the string.
+
+```ruby
+def on_tstring_beg(value); end
+```
+
+### `tstring_content`
+
+`tstring_content` is a scanner event that represents plain characters inside of an entity that accepts string content like a string, heredoc, command string, or regular expression.
+
+```ruby
+"string"
+```
+
+In the example above, a `tstring_content` event would be dispatched for the `string` token contained within the string. The handler for this event accepts a single string parameter containing the value as seen in the source.
+
+```ruby
+def on_tstring_content(value); end
+```
+
+### `tstring_end`
+
+`tstring_end` is a scanner event that represents the end of a string literal.
+
+```ruby
+"string"
+```
+
+In the example above, a `tstring_end` event would be dispatched when the parser encountered the second set of quotes. Strings can also use single quotes. They can also be declared using the `%q` and `%Q` syntax, as in:
+
+```ruby
+%q{string}
+```
+
+The handler for this event accepts a single string parameter representing the end of the string literal.
+
+```ruby
+def on_tstring_end(value); end
+```
+
+### `unary`
+
+`unary` is a parser event that represents a unary method being called on an expression, as in `!`, `~`, or `not`.
+
+```ruby
+!value
+```
+
+The handler for this event accepts a parameter for the operator being used (in the form of a symbol) and a parameter for the value which can be almost any Ruby expression.
+
+```ruby
+def on_unary(operator, value); end
+```
+
+### `undef`
+
+`undef` is a parser event that represents the use of the `undef` keyword.
+
+```ruby
+undef method
+```
+
+The handler for this event accepts a single array parameter that represents all of the names of the methods to be undefined. The names of the methods can be [symbol_literal](#symbol_literal) nodes (in the case of actual symbol literals or bare words) or they can be [dyna_symbol](#dyna_symbol) nodes (in the case of dynamic symbols).
+
+```ruby
+def on_undef(methods); end
+```
+
+### `unless`
+
+`unless` is a parser event that represents the first clause in an `unless` chain.
+
+```ruby
+unless predicate
+end
+```
+
+The handler for this event accepts three parameters. The first is the predicate to the `unless` clause which can be any Ruby expression. The second is the list of statements inside the clause (represented by a [stmts_add](stmts_add) node). The third is an optional consequent node representing the following [elsif](#elsif) or [else](#else) clause.
+
+```ruby
+def on_unless(predicate, stmts_add, consequent); end
+```
+
+### `unless_mod`
+
+`unless_mod` is a parser event that represents the modifier form of an `unless` statement.
+
+```ruby
+value unless predicate
+```
+
+The handler for this event accepts two parameters. The first is the predicate being used and the second is the statement to be executed. Both parameters can be any Ruby expression.
+
+```ruby
+def on_unless_mod(predicate, statement); end
+```
+
+### `until`
+
+`until` is a parser event that represents an `until` loop.
+
+```ruby
+until predicate
+end
+```
+
+The handler for this event accepts two parameters. The first is the predicate for the `until` clause which can be any Ruby expression. The second is the list of statements inside the loop which is represented by a [stmts_add](#stmts_add) node.
+
+```ruby
+def on_until(predicate, stmts_add); end
+```
+
+### `until_mod`
+
+`until_mod` is a parser event that represents the modifier form of an `until` loop.
+
+```ruby
+expression until predicate
+```
+
+The handler for this event accepts a parameter for the predicate to the `until` clause and a parameter for the statement to be executed. Both can be any Ruby expression.
+
+```ruby
+def on_until_mod(predicate, statement); end
+```
+
+### `var_alias`
+
+`var_alias` is a parser event that represents when you're using the `alias` keyword with global variable arguments.
+
+```ruby
+alias $new $old
+```
+
+The handler for this event accepts two parameters. The first is always a [gvar](#gvar) node which represents the first argument to the `alias` keyword. The second is either a [gvar](#gvar) node if a previously-defined global variable is being aliased or a [backref](#backref) node if a back reference is being aliased.
+
+```ruby
+def on_var_alias(left, right); end
+```
+
+### `var_field`
+
+`var_field` is a parser event that represents a variable that is being assigned a value. As such, it is always a child of an assignment type node. For example:
+
+```ruby
+variable = value
+```
+
+In the example above, the `var_field` event represents the `variable` token. The handler for this event accepts a single [ident](#ident) node that represents the name of the variable being assigned to.
+
+```ruby
+def on_var_field(ident); end
+```
+
+Note that there are a few cases where the ident can be omitted, as in the case that you're using a single splat operator without a name.
+
+### `var_ref`
+
+`var_ref` is a parser event that represents a variable reference.
+
+```ruby
+variable
+```
+
+This can be a plain local variable like the example above. It can also be a constant, class variable, global variable, instance variable, keyword (like `self`, `nil`, `true`, or `false`), or numbered block variable.
+
+The handler for this event accepts a single scanner event parameter representing the value as seen in source.
+
+```ruby
+def on_var_ref(contents); end
+```
+
+### `vcall`
+
+`vcall` nodes are any plain named object with Ruby that could be either a local variable or a method call.
+
+```ruby
+variable
+```
+
+The handler for this event accepts a single [ident](#ident) node that represents the contents.
+
+```ruby
+def on_vcall(ident); end
+```
+
+### `void_stmt`
+
+`void_stmt` is a special kind of parser event that represents an empty lexical block of code.
+
+```ruby
+;;
+```
+
+In the example above, there is a `void_stmt` between the two semicolons. The handler for this event accepts no parameters.
+
+```ruby
+def on_void_stmt; end
+```
+
+### `when`
+
+`when` is a parser event that represents another clause in a `case` chain.
+
+```ruby
+case value
+when predicate
+end
+```
+
+The handler for this event accepts three parameters. The first is the predicate used in the `when` clause, which can be any Ruby expression. The second is the statements contained within the clause, represented by a [stmts_add](#stmts_add) node. The third is an optional consequent clause that follows this `when` clause, which can be an [else](#else) node or another `when` node.
+
+```ruby
+def on_when(predicate, stmts_add, consequent); end
+```
+
+### `while`
+
+`while` is a parser event that represents a `while` loop.
+
+```ruby
+while predicate
+end
+```
+
+The handler for this event accepts two parameters. The first is the predicate for the `while` clause which can be any Ruby expression. The second is the list of statements inside the loop which is represented by a [stmts_add](#stmts_add) node.
+
+```ruby
+def on_while(predicate, stmts_add); end
+```
+
+### `while_mod`
+
+`while_mod` is a parser event that represents the modifier form of an `while` loop.
+
+```ruby
+expression while predicate
+```
+
+The handler for this event accepts a parameter for the predicate to the `while` clause and a parameter for the statement to be executed. Both can be any Ruby expression.
+
+```ruby
+def on_while_mod(predicate, statement); end
+```
+
+### `word_add`
+
+`word_add` is a parser event that represents a piece of a word within a special array literal that accepts interpolation.
+
+```ruby
+%w[a#{b}c xyz]
+```
+
+In the example above, `word_add` would be dispatched four times. Three for the first word (the plain content, the interpolation, and the plain content), and once for the second word.
+
+The handler for this event accepts the accumulated word (either a `word_add` or a [word_new](#word_new) node) and the part that should be appended (anything that can be added into a [string_add](#string_add)).
+
+```ruby
+def on_word_add(word, part); end
+```
+
+### `word_new`
+
+`word_new` is a parser event that represents the beginning of a word within a special array literal (either strings or symbols) that accepts interpolation. For example, in the following array, there are three word nodes:
+
+```ruby
+%W[one a#{two}a three]
+```
+
+Each word inside that array is represented as its own node, which is in terms of the parser a tree of [word_new](#word_new) and [word_add](#word_add) nodes. The handler for this event accepts no parameters as it is the start of a list.
+
+```ruby
+def on_word_new; end
+```
+
+### `words_beg`
+
+`words_beg` is a scanner event that represents the beginning of a string literal array with interpolation. For example:
+
+```ruby
+%W[one two three]
+```
+
+In the snippet above, a `words_beg` event would be dispatched with the value of `"%W["`. The handler for this event accepts a single string parameter representing the token as seen in the source. Note that these kinds of arrays can start with a lot of different delimiter types (e.g., `%W|` or `%W<`).
+
+```ruby
+def on_words_beg(value); end
+```
+
+### `words_add`
+
+`words_add` is a parser event that represents adding an element to a string literal array with interpolation.
+
+```ruby
+%W[one two three]
+```
+
+In the example above, three `words_add` events would be dispatched. The first would be with the result of the [words_new](#words_new) event handler, the second with the result of the first `words_add` event handler call, and the third with the result of the second call.
+
+The handler for this event accepts the current list of strings (as a [words_new](#words_new) or [words_add](#words_add) node) and the next value that should be added (always a [word_add](#word_add) node).
+
+```ruby
+def on_words_add(words, word_add); end
+```
+
+### `words_new`
+
+`words_new` is a parser event that represents the beginning of a string literal array with interpolation.
+
+```ruby
+%W[one two three]
+```
+
+In the example above, a `words_new` event would be dispatched when the parser finds the `one` token. It can be followed by any number of [words_add](#words_add) events. The handler for this event accepts no parameters, as it's the start of a list.
+
+```ruby
+def on_words_new; end
+```
+
+### `words_sep`
+
+`words_sep` is a scanner event that represents the separation between two words inside of a word literal array. It contains any amount of whitespace characters that are used to delimit the words. For example,
+
+```ruby
+%w[
+  one
+  two
+  three
+]
+```
+
+In the snippet above there would be two `words_sep` events dispatched, one between `one` and `two` and one between `two` and `three`. The handler for this event accepts a single string parameter that contains the separation between the two consecutive elements in the array.
+
+```ruby
+def on_words_sep(value); end
+```
+
+### `xstring_add`
+
+`xstring_add` is a parser event that represents appending a part of a string of commands that gets sent out to the terminal.
+
+```ruby
+`ls`
+```
+
+The handler for this event accepts two parameters. The first is either an [xstring_new](#xstring_new) node (if this is the first part of the string) or an [xstring_add](#xstring_add) node (if this is not the first part of the string). The second is the part of the string to append (which can be any node that [string_add](#string_add) accepts).
+
+```ruby
+def on_xstring_add(xstring, part); end
+```
+
+### `xstring_new`
+
+`xstring_new` is a parser event that represents the beginning of a string of commands that gets sent out to the terminal.
+
+```ruby
+`ls`
+```
+
+The handler for this event accepts no parameters, as it is the start of a list.
+
+```ruby
+def on_xstring_new; end
+```
+
+### `xstring_literal`
+
+`xstring_literal` is a parser event that represents a string of commands that gets sent to the terminal.
+
+```ruby
+`ls`
+```
+
+They can also use heredocs to present themselves, as in the example:
+
+```ruby
+<<-`CMD`
+  ls
+CMD
+```
+
+The handler for this event accepts a single [xstring_new](#xstring_new) node (if it is empty) or [xstring_add](#xstring_add) node (if it is not empty) which represents its contents.
+
+```ruby
+def on_xstring_literal(xstring); end
+```
+
+### `yield`
+
+`yield` is a parser event that represents using the `yield` keyword with arguments.
+
+```ruby
+yield value
+```
+
+The handler for this event accepts a single [args_add_block](#args_add_block) event that contains all of the arguments being passed. It can also be a [paren](#paren) node if parentheses are being used.
+
+```ruby
+def on_yield(args); end
+```
+
+### `yield0`
+
+`yield0` is a parser event that represents the bare `yield` keyword.
+
+```ruby
+yield
+```
+
+The handler for this event accepts no parameters. This is as opposed to the `yield` parser event, which is the version where one or more values are being yielded.
+
+```ruby
+def on_yield0; end
+```
+
+### `zsuper`
+
+`zsuper` is a parser event that represents the bare `super` keyword.
+
+```ruby
+super
+```
+
+The handler for this event accepts no parameters. This is as opposed to the `super` parser event, which is the version where one or more values are being passed to the `super` keyword.
+
+```ruby
+def on_zsuper; end
+```
+
 <!--
-export type Unary = ParserEvent<"unary", { body: [AnyNode], oper: string, paren: boolean | undefined }>;
-export type Undef = ParserEvent<"undef", { body: (DynaSymbol | SymbolLiteral)[] }>;
-export type Unless = ParserEvent<"unless", { body: [AnyNode, Stmts, null | Elsif | Else] }>;
-export type UnlessModifier = ParserEvent<"unless_mod", { body: [AnyNode, AnyNode] }>;
-export type Until = ParserEvent<"until", { body: [AnyNode, Stmts] }>;
-export type UntilModifier = ParserEvent<"until_mod", { body: [AnyNode, AnyNode] }>;
-export type VCall = ParserEvent<"vcall", { body: [Identifier] }>;
-export type VarAlias = ParserEvent<"var_alias", { body: [GVar, Backref | GVar] }>;
-export type VarField = ParserEvent<"var_field", { body: [null | Const | CVar | GVar | Identifier | IVar] }>;
-export type VarRef = ParserEvent<"var_ref", { body: [Const | CVar | GVar | Identifier | IVar | Keyword] }>;
-export type VoidStmt = ParserEvent<"void_stmt">;
-export type When = ParserEvent<"when", { body: [Args | ArgsAddStar, Stmts, null | Else | When] }>;
-export type While = ParserEvent<"while", { body: [AnyNode, Stmts] }>;
-export type WhileModifier = ParserEvent<"while_mod", { body: [AnyNode, AnyNode] }>;
-export type Word = ParserEvent<"word", { body: StringContent[] }>;
-export type Words = ParserEvent<"words", { body: Word[] }>;
-export type XStringLiteral = ParserEvent<"xstring_literal", { body: StringContent[] }>;
-export type Yield = ParserEvent<"yield", { body: [ArgsAddBlock | Paren] }>;
-export type Yield0 = ParserEvent0<"yield0">;
-export type Zsuper = ParserEvent0<"zsuper">;
-
-# tstring_beg is a scanner event that represents the beginning of a string
-# literal. It can represent either of the quotes for its value, or it can have
-# a %q/%Q with delimiter.
-def on_tstring_beg(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@tstring_beg,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# tstring_content is a scanner event that represents plain characters inside
-# of a string, heredoc, xstring, or regexp. Like comments, we need to force
-# the encoding here so JSON doesn't break.
-def on_tstring_content(value)
-  start_line = lineno
-  start_char = char_pos
-
-  {
-    type: :@tstring_content,
-    body: value.force_encoding('UTF-8'),
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-end
-
-# tstring_end is a scanner event that represents the end of a string literal.
-# It can either contain quotes, or it can have the end delimiter of a %q/%Q
-# literal.
-def on_tstring_end(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@tstring_end,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# A unary node represents a unary method being called on an expression, as
-# in !, ~, or not. We have somewhat special handling of the not operator
-# since if it has parentheses they don't get reported as a paren node for
-# some reason.
-def on_unary(oper, value)
-  if oper == :not
-    node = find_scanner_event(:@kw, 'not')
-
-    paren = source[node[:ec]...value[:sc]].include?('(')
-    ending = paren ? find_scanner_event(:@rparen) : value
-
-    node.merge!(
-      type: :unary,
-      oper: oper,
-      body: [value],
-      el: ending[:el],
-      ec: ending[:ec],
-      paren: paren
-    )
-  else
-    # Special case instead of using find_scanner_event here. It turns out that
-    # if you have a range that goes from a negative number to a negative
-    # number then you can end up with a .. or a ... that's higher in the
-    # stack. So we need to explicitly disallow those operators.
-    index =
-      scanner_events.rindex do |scanner_event|
-        scanner_event[:type] == :@op && scanner_event[:sc] < value[:sc] &&
-          !%w[.. ...].include?(scanner_event[:body])
-      end
-
-    beging = scanner_events.delete_at(index)
-    beging.merge!(
-      type: :unary,
-      oper: oper[0],
-      body: [value],
-      el: value[:el],
-      ec: value[:ec]
-    )
-  end
-end
-
-# undef nodes represent using the keyword undef. It accepts as an argument
-# an array of symbol_literal nodes that represent each message that the
-# user is attempting to undefine. We use the keyword to get the beginning
-# location and the last symbol to get the ending.
-def on_undef(symbol_literals)
-  last = symbol_literals.last
-
-  find_scanner_event(:@kw, 'undef').merge!(
-    type: :undef,
-    body: symbol_literals,
-    el: last[:el],
-    ec: last[:ec]
-  )
-end
-
-# unless is a parser event that represents the first clause in an unless
-# chain. It accepts as arguments the predicate of the unless, the
-# statements that are contained within the unless clause, and the optional
-# consequent clause.
-def on_unless(predicate, stmts, consequent)
-  beging = find_scanner_event(:@kw, 'unless')
-  ending = consequent || find_scanner_event(:@kw, 'end')
-
-  stmts.bind(predicate[:ec], ending[:sc])
-
-  {
-    type: :unless,
-    body: [predicate, stmts, consequent],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# unless_mod is a parser event that represents the modifier form of an
-# unless statement. It accepts as arguments the predicate of the unless
-# and the statement that are contained within the unless clause.
-def on_unless_mod(predicate, statement)
-  find_scanner_event(:@kw, 'unless')
-
-  {
-    type: :unless_mod,
-    body: [predicate, statement],
-    sl: statement[:sl],
-    sc: statement[:sc],
-    el: predicate[:el],
-    ec: predicate[:ec]
-  }
-end
-
-# until is a parser event that represents an until loop. It accepts as
-# arguments the predicate to the until and the statements that are
-# contained within the until clause.
-def on_until(predicate, stmts)
-  beging = find_scanner_event(:@kw, 'until')
-  ending = find_scanner_event(:@kw, 'end')
-
-  # Consume the do keyword if it exists so that it doesn't get confused for
-  # some other block
-  do_event = find_scanner_event(:@kw, 'do', consume: false)
-  if do_event && do_event[:sc] > predicate[:ec] && do_event[:ec] < ending[:sc]
-    scanner_events.delete(do_event)
-  end
-
-  stmts.bind(predicate[:ec], ending[:sc])
-
-  {
-    type: :until,
-    body: [predicate, stmts],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# until_mod is a parser event that represents the modifier form of an
-# until loop. It accepts as arguments the predicate to the until and the
-# statement that is contained within the until loop.
-def on_until_mod(predicate, statement)
-  find_scanner_event(:@kw, 'until')
-
-  {
-    type: :until_mod,
-    body: [predicate, statement],
-    sl: statement[:sl],
-    sc: statement[:sc],
-    el: predicate[:el],
-    ec: predicate[:ec]
-  }
-end
-
-# var_alias is a parser event that represents when you're using the alias
-# keyword with global variable arguments. You can optionally use
-# parentheses with this keyword, so we either track the location
-# information based on those or the final argument to the alias method.
-def on_var_alias(left, right)
-  beging = find_scanner_event(:@kw, 'alias')
-
-  paren = source[beging[:ec]...left[:sc]].include?('(')
-  ending = paren ? find_scanner_event(:@rparen) : right
-
-  {
-    type: :var_alias,
-    body: [left, right],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# var_ref is a parser event that represents using either a local variable,
-# a nil literal, a true or false literal, or a numbered block variable.
-def on_var_ref(contents)
-  contents.merge(type: :var_ref, body: [contents])
-end
-
-# var_field is a parser event that represents a variable that is being
-# assigned a value. As such, it is always a child of an assignment type
-# node. For example, in the following example foo is a var_field:
-#
-#     foo = 1
-#
-def on_var_field(ident)
-  if ident
-    ident.merge(type: :var_field, body: [ident])
-  else
-    # You can hit this pattern if you're assigning to a splat using pattern
-    # matching syntax in Ruby 2.7+
-    { type: :var_field, body: nil }
-  end
-end
-
-# vcall nodes are any plain named thing with Ruby that could be either a
-# local variable or a method call. They accept as an argument the ident
-# scanner event that contains their content.
-#
-# Access controls like private, protected, and public are reported as
-# vcall nodes since they're technically method calls. We want to be able
-# add new lines around them as necessary, so here we're going to
-# explicitly track those as a different node type.
-def on_vcall(ident)
-  @controls ||= %w[private protected public].freeze
-
-  body = ident[:body]
-  type =
-    if @controls.include?(body) && body == lines[lineno - 1].strip
-      :access_ctrl
-    else
-      :vcall
-    end
-
-  ident.merge(type: type, body: [ident])
-end
-
-# void_stmt is a special kind of parser event that represents an empty lexical
-# block of code. It often will have comments attached to it, so it requires
-# some special handling.
-def on_void_stmt
-  { type: :void_stmt, sl: lineno, el: lineno, sc: char_pos, ec: char_pos }
-end
-
-# when is a parser event that represents another clause in a case chain.
-# It accepts as arguments the predicate of the when, the statements that
-# are contained within the else if clause, and the optional consequent
-# clause.
-def on_when(predicate, stmts, consequent)
-  beging = find_scanner_event(:@kw, 'when')
-  ending = consequent || find_scanner_event(:@kw, 'end')
-
-  stmts.bind(predicate[:ec], ending[:sc])
-
-  {
-    type: :when,
-    body: [predicate, stmts, consequent],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# while is a parser event that represents a while loop. It accepts as
-# arguments the predicate to the while and the statements that are
-# contained within the while clause.
-def on_while(predicate, stmts)
-  beging = find_scanner_event(:@kw, 'while')
-  ending = find_scanner_event(:@kw, 'end')
-
-  # Consume the do keyword if it exists so that it doesn't get confused for
-  # some other block
-  do_event = find_scanner_event(:@kw, 'do', consume: false)
-  if do_event && do_event[:sc] > predicate[:ec] && do_event[:ec] < ending[:sc]
-    scanner_events.delete(do_event)
-  end
-
-  stmts.bind(predicate[:ec], ending[:sc])
-
-  {
-    type: :while,
-    body: [predicate, stmts],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# while_mod is a parser event that represents the modifier form of an
-# while loop. It accepts as arguments the predicate to the while and the
-# statement that is contained within the while loop.
-def on_while_mod(predicate, statement)
-  find_scanner_event(:@kw, 'while')
-
-  {
-    type: :while_mod,
-    body: [predicate, statement],
-    sl: statement[:sl],
-    sc: statement[:sc],
-    el: predicate[:el],
-    ec: predicate[:ec]
-  }
-end
-
-# word_new is a parser event that represents the beginning of a word
-# within a special array literal (either strings or symbols) that accepts
-# interpolation. For example, in the following array, there are three
-# word nodes:
-#
-#     %W[one a#{two}a three]
-#
-# Each word inside that array is represented as its own node, which is in
-# terms of the parser a tree of word_new and word_add nodes. For our
-# purposes, we're going to report this as a word node and build up an
-# array body of our parts.
-def on_word_new
-  { type: :word, body: [] }
-end
-
-# word_add is a parser event that represents a piece of a word within a
-# special array literal that accepts interpolation. It accepts as
-# arguments the parent word node as well as the additional piece of the
-# word, which can be either a @tstring_content node for a plain string
-# piece or a string_embexpr for an interpolated piece.
-def on_word_add(word, piece)
-  if word[:body].empty?
-    # Here we're making sure we get the correct bounds by using the
-    # location information from the first piece.
-    piece.merge(type: :word, body: [piece])
-  else
-    word.merge!(body: word[:body] << piece, el: piece[:el], ec: piece[:ec])
-  end
-end
-
-# words_beg is a scanner event that represents the start of a word literal
-# array with interpolation. For example, in the following snippet:
-#
-#     %W[foo bar baz]
-#
-# words_beg would be triggered with the value of "%W".
-def on_words_beg(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@words_beg,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# words_sep is a scanner event that represents the separate between two words
-# inside of a word literal array. It contains any amount of whitespace
-# characters that are used to delimit the words. For example,
-#
-#     %w[
-#       foo
-#       bar
-#       baz
-#     ]
-#
-# in the snippet above there would be two words_sep events triggered, one
-# between foo and bar and one between bar and baz. We don't need to track this
-# event in the AST that we're generating, so we're not going to define an
-# explicit handler for it.
-#
-#     def on_words_sep(value)
-#       value
-#     end
-
-# words_new is a parser event that represents the beginning of a string
-# literal array that accepts interpolation, like %W[one #{two} three]. It
-# can be followed by any number of words_add events, which we'll append
-# onto an array body.
-def on_words_new
-  find_scanner_event(:@words_beg).merge!(type: :words, body: [])
-end
-
-# words_add is a parser event that represents an element inside of a
-# string literal array that accepts interpolation, like
-# %W[one #{two} three]. It accepts as arguments the parent words node as
-# well as a word_add parser event.
-def on_words_add(words, word_add)
-  words.merge!(
-    body: words[:body] << word_add,
-    el: word_add[:el],
-    ec: word_add[:ec]
-  )
-end
-
-# xstring_new is a parser event that represents the beginning of a string
-# of commands that gets sent out to the terminal, like `ls`. It can
-# optionally include interpolation much like a regular string, so we're
-# going to build up an array body.
-#
-# If the xstring actually starts with a heredoc declaration, then we're
-# going to let heredocs continue to do their thing and instead just use
-# its location information.
-def on_xstring_new
-  heredoc = @heredocs[-1]
-
-  if heredoc && heredoc[:beging][3] = '`'
-    heredoc.merge(type: :xstring, body: [])
-  elsif RUBY_MAJOR <= 2 && RUBY_MINOR <= 5 && RUBY_PATCH < 7
-    { type: :xstring, body: [] }
-  else
-    find_scanner_event(:@backtick).merge!(type: :xstring, body: [])
-  end
-end
-
-# xstring_add is a parser event that represents a piece of a string of
-# commands that gets sent out to the terminal, like `ls`. It accepts two
-# arguments, the parent xstring node as well as the piece that is being
-# added to the string. Because it supports interpolation this is either a
-# tstring_content scanner event representing bare string content or a
-# string_embexpr representing interpolated content.
-def on_xstring_add(xstring, piece)
-  xstring.merge!(
-    body: xstring[:body] << piece,
-    el: piece[:el],
-    ec: piece[:ec]
-  )
-end
-
-# xstring_literal is a parser event that represents a string of commands
-# that gets sent to the terminal, like `ls`. It accepts as its only
-# argument an xstring node that is a built up array representation of all
-# of the parts of the string (including the plain string content and the
-# interpolated content).
-#
-# They can also use heredocs to present themselves, as in the example:
-#
-#     <<-`SHELL`
-#       ls
-#     SHELL
-#
-# In this case we need to change the node type to be a heredoc instead of
-# an xstring_literal in order to get the right formatting.
-def on_xstring_literal(xstring)
-  heredoc = @heredocs[-1]
-
-  if heredoc && heredoc[:beging][3] = '`'
-    heredoc.merge!(body: xstring[:body])
-  else
-    ending = find_scanner_event(:@tstring_end)
-    xstring.merge!(type: :xstring_literal, el: ending[:el], ec: ending[:ec])
-  end
-end
-
-# yield is a parser event that represents using the yield keyword with
-# arguments. It accepts as an argument an args_add_block event that
-# contains all of the arguments being passed.
-def on_yield(args_add_block)
-  find_scanner_event(:@kw, 'yield').merge!(
-    type: :yield,
-    body: [args_add_block],
-    el: args_add_block[:el],
-    ec: args_add_block[:ec]
-  )
-end
-
-# yield0 is a parser event that represents the bare yield keyword. It has
-# no body as it accepts no arguments. This is as opposed to the yield
-# parser event, which is the version where you're yielding one or more
-# values.
-def on_yield0
-  find_scanner_event(:@kw, 'yield').merge!(type: :yield0)
-end
-
-# zsuper is a parser event that represents the bare super keyword. It has
-# no body as it accepts no arguments. This is as opposed to the super
-# parser event, which is the version where you're calling super with one
-# or more values.
-def on_zsuper
-  find_scanner_event(:@kw, 'super').merge!(type: :zsuper)
-end
-
 ## Errors
 
 # If we encounter a parse error, just immediately bail out so that our runner
