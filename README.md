@@ -2638,9 +2638,75 @@ The handler for this event accepts a single [string_content](#string_content) no
 def on_string_literal(string); end
 ```
 
+### `super`
+
+`super` is a parser event that represents using the `super` keyword with arguments. It can optionally use parentheses.
+
+```ruby
+super(value)
+```
+
+The handler for this event accepts a single parameter that represents the arguments given to the `super` keyword. It can be an [arg_paren](#arg_paren) (in parentheses are used) or an [args_add_block](#args_add_block) (if parentheses are not used).
+
+```ruby
+def on_super(args); end
+```
+
+### `symbeg`
+
+`symbeg` is a scanner event that represents the beginning of a symbol literal.
+
+```ruby
+:symbol
+```
+
+`symbeg` will also get dispatched for dynamic symbols, as in:
+
+```ruby
+:"symbol"
+```
+
+Finally, `symbeg` will get dispatched for symbols using the `%s` syntax, as in:
+
+```ruby
+%s[symbol]
+```
+
+The handler for this event accepts a single string parameter. In most cases (as in the first example above) it will contain just `":"`. In the case of dynamic symbols it will contain `":'"` or `":\""`. In the case of `%s` symbols, it will contain the start of the symbol including the `%s` and the delimiter.
+
+```ruby
+def on_symbeg(value); end
+```
+
+### `symbol`
+
+`symbol` is a parser event that immediately descends from a [symbol_literal](#symbol_literal).
+
+```ruby
+:symbol
+```
+
+The handler for this event accepts a single node that represents the contents of the symbol. In most cases this will be an [ident](#ident) node, but if the symbol matches other patterns it can be other scanner events (like [kw](#kw) for `:if` or [ivar](#ivar) for `:@ivar`).
+
+```ruby
+def on_symbol(contents); end
+```
+
+### `symbol_literal`
+
+`symbol_literal` is a parser event that represents a symbol in the system with no interpolation (as opposed to a [dyna_symbol](#dyna_symbol)).
+
+```ruby
+:symbol
+```
+
+The handler for this event accepts a single parameter. In most cases it is a [symbol](#symbol) node. In rare cases, it's an [ident](#ident) node (where Ruby accepts bare words like `alias aliased_name name`).
+
+```ruby
+def on_symbol_literal(contents); end
+```
+
 <!--
-export type Super = ParserEvent<"super", { body: [Args | ArgParen | ArgsAddBlock] }>;
-export type SymbolLiteral = ParserEvent<"symbol_literal", { body: [Backtick | Const | CVar | GVar | Identifier | IVar | Keyword | Op] }>;
 export type Symbols = ParserEvent<"symbols", { body: Word[] }>;
 export type Ternary = ParserEvent<"ifop", { body: [AnyNode, AnyNode, AnyNode] }>;
 export type TopConstField = ParserEvent<"top_const_field", { body: [Const] }>;
@@ -2665,67 +2731,6 @@ export type XStringLiteral = ParserEvent<"xstring_literal", { body: StringConten
 export type Yield = ParserEvent<"yield", { body: [ArgsAddBlock | Paren] }>;
 export type Yield0 = ParserEvent0<"yield0">;
 export type Zsuper = ParserEvent0<"zsuper">;
-
-# A super is a parser event that represents using the super keyword with
-# any number of arguments. It can optionally use parentheses (represented
-# by an arg_paren node) or just skip straight to the arguments (with an
-# args_add_block node).
-def on_super(contents)
-  find_scanner_event(:@kw, 'super').merge!(
-    type: :super,
-    body: [contents],
-    el: contents[:el],
-    ec: contents[:ec]
-  )
-end
-
-# symbeg is a scanner event that represents the beginning of a symbol literal.
-# In most cases it will contain just ":" as in the value, but if its a dynamic
-# symbol being defined it will contain ":'" or ":\"".
-def on_symbeg(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@symbeg,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# A symbol is a parser event that immediately descends from a symbol
-# literal and contains an ident representing the contents of the symbol.
-def on_symbol(ident)
-  # When ripper is lexing source text, it turns symbols into keywords if their
-  # contents match, which will mess up the location information of all of our
-  # other nodes. So for example instead of { type: :@ident, body: "class" }
-  # you would instead get { type: :@kw, body: "class" }.
-  #
-  # In order to take care of this, we explicitly delete this scanner event
-  # from the stack to make sure it doesn't screw things up.
-  scanner_events.pop
-
-  ident.merge(type: :symbol, body: [ident])
-end
-
-# A symbol_literal represents a symbol in the system with no interpolation
-# (as opposed to a dyna_symbol). As its only argument it accepts either a
-# symbol node (for most cases) or an ident node (in the case that we're
-# using bare words, as in an alias node like alias foo bar).
-def on_symbol_literal(contents)
-  if scanner_events[-1] == contents
-    contents.merge(type: :symbol_literal, body: [contents])
-  else
-    beging = find_scanner_event(:@symbeg)
-    contents.merge!(type: :symbol_literal, sc: beging[:sc])
-  end
-end
 
 # symbols_beg is a scanner event that represents the start of a symbol literal
 # array with interpolation. For example, in the following snippet:
