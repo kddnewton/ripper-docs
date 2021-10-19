@@ -2706,11 +2706,107 @@ The handler for this event accepts a single parameter. In most cases it is a [sy
 def on_symbol_literal(contents); end
 ```
 
+### `symbols_add`
+
+`symbols_add` is a parser event that represents adding an element to a symbol literal array with interpolation.
+
+```ruby
+%I[one two three]
+```
+
+In the example above, three `symbols_add` events would be dispatched. The first would be with the result of the [symbols_new](#symbols_new) event handler, the second with the result of the first `symbols_add` event handler call, and the third with the result of the second call.
+
+The handler for this event accepts the current list of symbols (as a [symbols_new](#symbols_new) or [symbols_add](#symbols_add) node) and the next value that should be added (always a [word_add](#word_add) node).
+
+```ruby
+def on_symbols_add(qsymbols, word_add); end
+```
+
+### `symbols_beg`
+
+`symbols_beg` is a scanner event that represents the start of a symbol literal array with interpolation. For example, in the following snippet:
+
+```ruby
+%I[one two three]
+```
+
+In the snippet above, a `symbols_beg` event would be dispatched with the value of `"%I["`. The handler for this event accepts a single string parameter representing the token as seen in the source. Note that these kinds of arrays can start with a lot of different delimiter types (e.g., `%I|` or `%I<`).
+
+```ruby
+def on_symbols_beg(value)
+```
+
+### `symbols_new`
+
+`symbols_new` is a parser event that represents the beginning of a symbol literal array with interplation.
+
+```ruby
+%I[one two three]
+```
+
+In the axample above, a `symbols_new` event would be dispatched when the parser finds the `one` token. It can be followed by any number of [symbols_add](#symbols_add) events. The handler for this event accepts no parameters, as it's the start of a list.
+
+```ruby
+def on_symbols_new; end
+```
+
+### `tlambda`
+
+`tlambda` is a scanner event that represents the beginning of a lambda literal.
+
+```ruby
+-> { value }
+```
+
+In the example above it represents the `->` operator. The handler for this event accepts a single string parameter that always has the value of `"->"`.
+
+```ruby
+def on_tlambda(value); end
+```
+
+### `tlambeg`
+
+`tlambeg` is a scanner event that represents the beginning of the body of a lambda literal using braces.
+
+```ruby
+-> { value }
+```
+
+In the example above it represents the `{` operator. The handler for this event accepts a single string parameter that always has the value of `"{"`.
+
+```ruby
+def on_tlambeg(value); end
+```
+
+### `top_const_field`
+
+`top_const_field` is a parser event that is always the child of some kind of assignment. It represents when you're assigning to a constant that is being referenced at the top level. For example:
+
+```ruby
+::Constant = value
+```
+
+The handler for this event accepts a single [const](#const) parameter that represents the name of the constant being assigned to.
+
+```ruby
+def on_top_const_field(const); end
+```
+
+### `top_const_ref`
+
+`top_const_ref` is a parser event that is a very similar to [top_const_field](#top_const_field) except that it is not involved in an assignment. It looks like the following example:
+
+```ruby
+::Constant
+```
+
+The handler for this event accepts a single [const](#const) parameter that represents the name of the constant being referenced.
+
+```ruby
+def on_top_const_ref(const); end
+```
+
 <!--
-export type Symbols = ParserEvent<"symbols", { body: Word[] }>;
-export type Ternary = ParserEvent<"ifop", { body: [AnyNode, AnyNode, AnyNode] }>;
-export type TopConstField = ParserEvent<"top_const_field", { body: [Const] }>;
-export type TopConstRef = ParserEvent<"top_const_ref", { body: [Const] }>;
 export type Unary = ParserEvent<"unary", { body: [AnyNode], oper: string, paren: boolean | undefined }>;
 export type Undef = ParserEvent<"undef", { body: (DynaSymbol | SymbolLiteral)[] }>;
 export type Unless = ParserEvent<"unless", { body: [AnyNode, Stmts, null | Elsif | Else] }>;
@@ -2731,119 +2827,6 @@ export type XStringLiteral = ParserEvent<"xstring_literal", { body: StringConten
 export type Yield = ParserEvent<"yield", { body: [ArgsAddBlock | Paren] }>;
 export type Yield0 = ParserEvent0<"yield0">;
 export type Zsuper = ParserEvent0<"zsuper">;
-
-# symbols_beg is a scanner event that represents the start of a symbol literal
-# array with interpolation. For example, in the following snippet:
-#
-#     %I[foo bar baz]
-#
-# symbols_beg would be triggered with the value of "%I".
-def on_symbols_beg(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@symbols_beg,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# symbols_new is a parser event that represents the beginning of a symbol
-# literal array that accepts interpolation, like %I[one #{two} three]. It
-# can be followed by any number of symbols_add events, which we'll append
-# onto an array body.
-def on_symbols_new
-  find_scanner_event(:@symbols_beg).merge!(type: :symbols, body: [])
-end
-
-# symbols_add is a parser event that represents an element inside of a
-# symbol literal array that accepts interpolation, like
-# %I[one #{two} three]. It accepts as arguments the parent symbols node as
-# well as a word_add parser event.
-def on_symbols_add(symbols, word_add)
-  symbols.merge!(
-    body: symbols[:body] << word_add,
-    el: word_add[:el],
-    ec: word_add[:ec]
-  )
-end
-
-# tlambda is a scanner event that represents the beginning of a lambda
-# literal. It always has the value of "->".
-def on_tlambda(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@tlambda,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# tlambeg is a scanner event that represents the beginning of the body of a
-# lambda literal. It always has the value of "{".
-def on_tlambeg(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@tlambeg,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# A top_const_field is a parser event that is always the child of some
-# kind of assignment. It represents when you're assigning to a constant
-# that is being referenced at the top level. For example:
-#
-#     ::X = 1
-#
-def on_top_const_field(const)
-  beging = find_colon2_before(const)
-  const.merge(
-    type: :top_const_field,
-    body: [const],
-    sl: beging[:sl],
-    sc: beging[:sc]
-  )
-end
-
-# A top_const_ref is a parser event that is a very similar to
-# top_const_field except that it is not involved in an assignment. It
-# looks like the following example:
-#
-#     ::X
-#
-def on_top_const_ref(const)
-  beging = find_colon2_before(const)
-  const.merge(
-    type: :top_const_ref,
-    body: [const],
-    sl: beging[:sl],
-    sc: beging[:sc]
-  )
-end
 
 # tstring_beg is a scanner event that represents the beginning of a string
 # literal. It can represent either of the quotes for its value, or it can have
