@@ -118,29 +118,6 @@ Other events, such as [qsymbols_new](#qsymbols_new)/[qsymbols_add](#qsymbols_add
 
 When using Ripper by inheriting from the Ripper parent class, this is often handled by the `*_new` methods creating an array and the `*_add` methods appending to that array. You can see this pattern used in `Ripper::SexpBuilderPP`, which generates the `sexp` return values, [here](https://github.com/ruby/ruby/blob/38d255d023373a665ce0d2622ed6e25462653a2a/ext/ripper/lib/ripper/sexp.rb#L178-L184).
 
-### Statements
-
-Certain nodes function as wrappers around lists of statements (`stmts_add`/`stmts_new` nodes). For instance, an `if` or `else` block normally contains a list of statements, or the inside of a `while` loop, `rescue` clause or `proc`. Fortunately, they are all handled in the same way for each node type, which makes them simpler to work with if you're going to be iterating through statement lists (for instance in a formatter or a static analyzer). The nodes that wrap statements are:
-
-* [BEGIN](#BEGIN) - the only argument
-* [END](#END) - the only argument
-* [bodystmt](#bodystmt) - the first argument
-* [brace_block](#brace_block) - the second argument after the optional block variables
-* [else](#else) - the only argument
-* [elsif](#elsif) - the second argument, after the predicate
-* [ensure](#ensure) - the only argument
-* [for](#for) - the third argument, after the block variable and the collection
-* [if](#if) - the second argument, after the predicate
-* [in](#in) - the second argument, after the left-hand side
-* [lambda](#lambda) - the second argument if you're using a brace block (if you're using a do block it's a [bodystmt](#bodystmt) node because you can attach rescue handlers)
-* [program](#program) - the only argument (this is the top-level list of statements)
-* [rescue](#rescue) - the second argument, after the rescued error
-* [string_embexpr](#string_embexpr) - the first argument representing the interpolated statements
-* [unless](#unless) - the second argument, after the predicate
-* [until](#until) - the second argument, after the predicate
-* [when](#when) - the second argument, after the case declaration
-* [while](#while) - the second argument, after the predicate
-
 ### Naming
 
 Certain nodes are named similarly which can indicate similar functionality.
@@ -266,12 +243,12 @@ BEGIN {
 }
 ```
 
-Interestingly, BEGIN doesn't allow the `do...end` keywords for the block. Only braces are permitted.
+Interestingly, BEGIN doesn't allow the `do` and `end` keywords for the block. Only braces are permitted.
 
-The handler for this event accepts one parameter that is always a `stmts` node:
+The handler for this event accepts one parameter that is always a `stmts_add` node:
 
 ```ruby
-def on_BEGIN(stmts); end
+def on_BEGIN(stmts_add); end
 ```
 
 ### `CHAR`
@@ -297,15 +274,15 @@ END {
 }
 ```
 
-Interestingly, you can't use the `do...end` keywords for the block. The handler for this event accepts one parameter that is always a `stmts` node:
+Interestingly, you can't use the `do` and `end` keywords for the block. The handler for this event accepts one parameter that is always a `stmts_add` node:
 
 ```ruby
-def on_END(stmts); end
+def on_END(stmts_add); end
 ```
 
 ### `__end__`
 
-`__end__` is a scanner event that represents `__END__` syntax, which allows individual scripts to keep content after the main ruby code that can be read through the DATA constant. It looks like:
+`__end__` is a scanner event that represents `__END__` syntax, which allows individual scripts to keep content after the main ruby code that can be read through the `DATA` constant. It looks like:
 
 ```ruby
 puts DATA.read
@@ -2532,6 +2509,27 @@ The handler for this event accepts two parameters. The first is the accumulated 
 ```ruby
 def on_stmts_add(stmts, stmt); end
 ```
+
+Lots of different nodes function as wrappers around lists of statements (`stmts_add`/[stmts_new](#stmts_new) nodes). For instance, an `if` or `else` block normally contains a list of statements, or the inside of a `while` loop, `rescue` clause, or `lambda`. Fortunately, they are all handled in the same way for each node type, which makes them simpler to work with if you're going to be iterating through statement lists (for instance in a formatter or a static analyzer). The nodes that wrap statements are:
+
+* [BEGIN](#BEGIN)
+* [END](#END)
+* [bodystmt](#bodystmt)
+* [brace_block](#brace_block)
+* [else](#else)
+* [elsif](#elsif)
+* [ensure](#ensure)
+* [for](#for)
+* [if](#if)
+* [in](#in)
+* [lambda](#lambda)
+* [program](#program)
+* [rescue](#rescue)
+* [string_embexpr](#string_embexpr)
+* [unless](#unless)
+* [until](#until)
+* [when](#when)
+* [while](#while)
 
 ### `stmts_new`
 
