@@ -1872,17 +1872,244 @@ In the above example, the `mlhs_new` event would be dispatched just before the `
 def on_mlhs_new; end
 ```
 
+### `mlhs_add_post`
+
+`mlhs_add_post` is a parser event that represents adding another set of variables onto a list of assignments after a splat variable within a multiple assignment.
+
+```ruby
+left, *middle, right = values
+```
+
+In the example above, an `mlhs_add_post` event would be dispatched when the parser encountered the `right` token. The handler for this event accepts two parameters. The first is the [mlhs_add_star](#mlhs_add_star) the contains everything leading up to the splatted variable. The second is the [mlhs_add](#mlhs_add) that represents every variable after that splatted variable.
+
+```ruby
+def on_mlhs_add_post(mlhs_add_star, mlhs_add); end
+```
+
+### `mlhs_add_star`
+
+`mlhs_add_star` is a parser event that represents a splatted variable inside of a multiple assignment on the left hand side.
+
+```ruby
+first, *rest = values
+```
+
+The handler for this event accepts two parameters. The first is the result of the first call to either [mlhs_new](#mlhs_new) (if the splatted variable is the first in the list) or [mlhs_add](#mlhs_add) (if the splatted variable is not the first in the list). The second is the node that represents the value being splatted, which can be many different nodes (usually a field node, but it depends on the expression type).
+
+```ruby
+def on_mlhs_add_star(mlhs, part); end
+```
+
+### `mlhs_paren`
+
+`mlhs_paren` is a parser event that represents parentheses being used to destruct values in a multiple assignment on the left hand side.
+
+```ruby
+(left, right) = value
+```
+
+The handler for this event accepts one parameter which represents the value contained within the parentheses. Depending on the declaration, it can be an [mlhs_add](#mlhs_add), [mlhs_add_post](#mlhs_add_post), [mlhs_add_star](#mlhs_add_star), or a nested `mlhs_paren`.
+
+```ruby
+def on_mlhs_paren(contents); end
+```
+
+### `module`
+
+`module` is a parser event that represents defining a module using the `module` keyword.
+
+```ruby
+module Namespace
+end
+```
+
+The handler for this event accepts one parameter for the name of the module (a [const](#const) node) and one parameter for the statements inside the module (a [bodystmt](#bodystmt) node).
+
+```ruby
+def on_module(const, bodystmt); end
+```
+
+### `mrhs_add`
+
+`mrhs_add` is a parser event that represents adding another value onto a list on the right hand side of a multiple assignment.
+
+```ruby
+values = first, second, third
+```
+
+In the example above, three `mrhs_add` events would be dispatched, one for each identifier in the list. The handler for this event accepts the result of the handler for [mrhs_new](#mrhs_new) (if it's the first element in the list) or `mrhs_add` if it's not, as well as the part that is being added which can be any Ruby expression.
+
+```ruby
+def on_mrhs_add(mrhs, part); end
+```
+
+### `mrhs_new`
+
+`mrhs_new` is a parser event that represents the beginning of a list of values that are being assigned within a multiple assignment node. It can be followed by any number of [mrhs_add](#mrhs_add) nodes.
+
+```ruby
+values = first, second, third
+```
+
+In the example above, an `mrhs_new` event would be dispatched when the parser hits the `first` identifier. The handler for this event accepts no parameters as it represents the beginning of a list.
+
+```ruby
+def on_mrhs_new; end
+```
+
+### `mrhs_add_star`
+
+`mrhs_add_star` is a parser event that represents using the splat operator to expand out a value on the right hand side of a multiple assignment.
+
+```ruby
+values = first, *rest
+```
+
+The handler for this event accepts two parameters. The first is either an [mrhs_new](#mrhs_new) (in the case that the splat is the only value being assigned) or an [mrhs_new_from_args](#mrhs_new_from_args) (in the case that multiple values are being assigned, as in the example above). The second is the part that is being splatted into the list, which can be any Ruby expression.
+
+```ruby
+def on_mrhs_add_star(mrhs, part); end
+```
+
+### `mrhs_new_from_args`
+
+`mrhs_new_from_args` is a parser event that represents the shorthand of a multiple assignment that allows you to assign values using just commas as opposed to assigning from an array. For example, in the following segment the right hand side of the assignment would dispatch this event:
+
+```ruby
+values = first, second, third
+```
+
+The handler for this event accepts a single [args_add](#args_add) or [args_add_star](#args_add_star) node that represents the values being assigned.
+
+```ruby
+def on_mrhs_new_from_args(args); end
+```
+
+### `next`
+
+`next` is a parser event that represents using the `next` keyword.
+
+```ruby
+next
+```
+
+The `next` keyword can also optionally be called with an argument:
+
+```ruby
+next value
+```
+
+`next` can even be called with multiple arguments, but only if parentheses are omitted, as in:
+
+```ruby
+next first, second, third
+```
+
+If a single value is being given, parentheses can be used, as in:
+
+```ruby
+next(value)
+```
+
+The handler for this event accepts a single parameter that represents the type of values being passed to the `next` keyword. In the case that no arguments are given, it's an [args_new](#args_new) node. If one or more arguments are given, it's an [args_add_block](#args_add_block) node.
+
+```ruby
+def on_next(args); end
+```
+
+### `nl`
+
+`nl` is a scanner event representing a newline in the source. As you can imagine, it gets dispatched quite often, so take care if you're defining this method manually. 
+
+The handler for this event accepts a single string parameter that always contains the value of the newline.
+
+```ruby
+def on_nl(value); end
+```
+
+### `nokw_param`
+
+`nokw_param` is a parser event that represents the use of the Ruby 2.7+ syntax to indicate a method should take no additional keyword arguments. For example in the following snippet:
+
+```ruby
+def method(**nil) end
+```
+
+This example is saying that the method `method` should not accept any keyword arguments. The handler for this event accepts a single parameter that is always the value `nil`.
+
+```ruby
+def on_nokw_param(value); end
+```
+
+The result of this event handler will get passed up to the event handler for the [params](#params) node that it is a part of in the `kwrest` position.
+
+### `op`
+
+`op` is a scanner event representing an operator literal in the source. For example, in the following snippet:
+
+```ruby
+1 + 2
+```
+
+In the example above, the `+` operator would dispatch this event. The handler for this event accepts a single string parameter that represents the operator as seen in the source.
+
+```ruby
+def on_op(value); end
+```
+
+### `opassign`
+
+`opassign` is a parser event that represents assigning a value to a variable or constant using an operator like `+=` or `||=`.
+
+```ruby
+variable += value
+```
+
+The handler for this event accepts three parameters. The first is the left side of the operator, which can be any kind of field node. The second is the [op](#op) node that represents the operator being used. The third is the right side of the operator, which can be any Ruby expression.
+
+```ruby
+def on_opassign(left, operator, right); end
+```
+
+### `operator_ambiguous`
+
+`operator_ambiguous` is a parser event that represents when the parser sees an operator as ambiguous. For example, in the following snippet:
+
+```ruby
+method %[]
+```
+
+the question becomes if the percent sign is being used as a method call or if it's the start of a string literal. The handler for this event accepts two parameters. The first is a symbol that represents the operator that dispatched this event (in the case of this example it would be `:%`). The second is a string that is used to indicate the kind of ambiguity (these are defined explicitly in the parser, in the case of this example it would be `"string literal"`).
+
+```ruby
+def on_operator_ambiguous(operator, ambiguity); end
+```
+
+### `params`
+
+`params` is a parser event that represents defining parameters on a method or lambda.
+
+```ruby
+def method(param) end
+```
+
+In the example above a `params` event would be dispatched when the parser found the `param` identifier. The handler for this event accepts seven parameters, each indicating the presence of a different type of parameter (so they can all be `nil`). They are, in order:
+
+* Positional parameters (`req`) - an array of [ident](#ident) nodes
+* Optional parameters (`opt`) - an array of pairs containing [ident](#ident) nodes for the name as well as a node representing whatever expression is being used for the default value
+* Rest parameter (`rest`) - either an [args_forward](#args_forward) node (if argument forwarding is being used), an [excessed_comma](#excessed_comma) node (if a trailing comma is present to indicate destructuring), or a [rest_param](#rest_param) node to represent a splat
+* Post parameters (`req`) - an array of [ident](#ident) nodes that represent the list of parameters occuring _after_ a rest parameter
+* Keyword parameters (`keyreq` and `key`) - an array of pairs containing [label](#label) nodes for the name as well as a node representing whatever expresion is used for the default value (or `false` if none is provided)
+* Keyword rest parameter (`keyrest` or `nokey`) - either a [kwrest_param](#kwrest_param) node if a double-splat operator is being used to gather up remaining keyword arguments or the symbol `:nil` if it's using the `**nil` syntax
+* Block parameter (`block`) - a [blockarg](#blockarg) node
+
+Note that the shorthands above come from calling the `Method#parameters` method.
+
+```ruby
+def on_params(req, opts, rest, post, keys, keyrest, block); end
+```
+
 <!--
-export type MlhsAddPost = ParserEvent<"mlhs_add_post", { body: [MlhsAddStar, Mlhs] }>;
-export type MlhsAddStar = ParserEvent<"mlhs_add_star", { body: [Mlhs, null | ArefField | Field | Identifier | VarField] }>;
-export type MlhsParen = ParserEvent<"mlhs_paren", { body: [Mlhs | MlhsAddPost | MlhsAddStar | MlhsParen] }>;
-export type Module = ParserEvent<"module", { body: [ConstPathRef | ConstRef | TopConstRef, Bodystmt] }>;
-export type Mrhs = ParserEvent<"mrhs", { body: [] }>;
-export type MrhsAddStar = ParserEvent<"mrhs_add_star", { body: [Mrhs | MrhsNewFromArgs, AnyNode] }>;
-export type MrhsNewFromArgs = ParserEvent<"mrhs_new_from_args", { body: [Args | ArgsAddStar, AnyNode], oper: string }>;
-export type Next = ParserEvent<"next", { body: [Args | ArgsAddBlock] }>;
-export type Opassign = ParserEvent<"opassign", { body: [Assignable, Op, AnyNode] }>;
-export type Params = ParserEvent<"params", { body: [Identifier[], null | [Identifier, AnyNode][], null | ArgsForward | ExcessedComma | RestParam, Identifier[], null | [Label, AnyNode][], null | "nil" | KeywordRestParam, null | Blockarg] }>;
 export type Paren = ParserEvent<"paren", { body: [AnyNode], lparen: Lparen }>;
 export type Program = ParserEvent<"program", { body: [Stmts] }>;
 export type Qsymbols = ParserEvent<"qsymbols", { body: TStringContent[] }>;
@@ -1931,244 +2158,6 @@ export type XStringLiteral = ParserEvent<"xstring_literal", { body: StringConten
 export type Yield = ParserEvent<"yield", { body: [ArgsAddBlock | Paren] }>;
 export type Yield0 = ParserEvent0<"yield0">;
 export type Zsuper = ParserEvent0<"zsuper">;
-
-type Assignable = ArefField | ConstPathField | Field | TopConstField | VarField;
-type HashContent = AssocNew | AssocSplat;
-type ParenAroundParams = Omit<Paren, "body"> & { body: [Params] };
-
-# An mlhs_add_post is a parser event that represents adding another set of
-# variables onto a list of assignments after a splat variable. It accepts
-# as arguments the previous mlhs_add_star node that represented the splat
-# as well another mlhs node that represents all of the variables after the
-# splat.
-def on_mlhs_add_post(mlhs_add_star, mlhs)
-  mlhs_add_star.merge(
-    type: :mlhs_add_post,
-    body: [mlhs_add_star, mlhs],
-    el: mlhs[:el],
-    ec: mlhs[:ec]
-  )
-end
-
-# An mlhs_add_star is a parser event that represents a splatted variable
-# inside of a multiple assignment on the left hand side. It accepts as
-# arguments the parent mlhs node as well as the part that represents the
-# splatted variable.
-def on_mlhs_add_star(mlhs, part)
-  beging = find_scanner_event(:@op, '*')
-  ending = part || beging
-
-  {
-    type: :mlhs_add_star,
-    body: [mlhs, part],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# An mlhs_paren is a parser event that represents parentheses being used
-# to deconstruct values in a multiple assignment on the left hand side. It
-# accepts as arguments the contents of the inside of the parentheses,
-# which is another mlhs node.
-def on_mlhs_paren(contents)
-  beging = find_scanner_event(:@lparen)
-  ending = find_scanner_event(:@rparen)
-
-  if source[beging[:ec]...ending[:sc]].strip.end_with?(',')
-    contents[:comma] = true
-  end
-
-  {
-    type: :mlhs_paren,
-    body: [contents],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# module is a parser event that represents defining a module. It accepts
-# as arguments the name of the module and the bodystmt event that
-# represents the statements evaluated within the context of the module.
-def on_module(const, bodystmt)
-  beging = find_scanner_event(:@kw, 'module')
-  ending = find_scanner_event(:@kw, 'end')
-
-  bodystmt.bind(find_next_statement_start(const[:ec]), ending[:sc])
-
-  {
-    type: :module,
-    body: [const, bodystmt],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# An mrhs_new is a parser event that represents the beginning of a list of
-# values that are being assigned within a multiple assignment node. It can
-# be followed by any number of mrhs_add nodes that we'll build up into an
-# array body.
-def on_mrhs_new
-  {
-    type: :mrhs,
-    body: [],
-    sl: lineno,
-    sc: char_pos,
-    el: lineno,
-    ec: char_pos
-  }
-end
-
-# An mrhs_add is a parser event that represents adding another value onto
-# a list on the right hand side of a multiple assignment.
-def on_mrhs_add(mrhs, part)
-  if mrhs[:body].empty?
-    part.merge(type: :mrhs, body: [part])
-  else
-    mrhs.merge!(body: mrhs[:body] << part, el: part[:el], ec: part[:ec])
-  end
-end
-
-# An mrhs_add_star is a parser event that represents using the splat
-# operator to expand out a value on the right hand side of a multiple
-# assignment.
-def on_mrhs_add_star(mrhs, part)
-  beging = find_scanner_event(:@op, '*')
-  ending = part || beging
-
-  {
-    type: :mrhs_add_star,
-    body: [mrhs, part],
-    sl: beging[:sl],
-    sc: beging[:sc],
-    el: ending[:el],
-    ec: ending[:ec]
-  }
-end
-
-# An mrhs_new_from_args is a parser event that represents the shorthand
-# of a multiple assignment that allows you to assign values using just
-# commas as opposed to assigning from an array. For example, in the
-# following segment the right hand side of the assignment would trigger
-# this event:
-#
-#     foo = 1, 2, 3
-#
-def on_mrhs_new_from_args(args)
-  args.merge(type: :mrhs_new_from_args, body: [args])
-end
-
-# next is a parser event that represents using the next keyword. It
-# accepts as an argument an args or args_add_block event that contains all
-# of the arguments being passed to the next.
-def on_next(args_add_block)
-  find_scanner_event(:@kw, 'next').merge!(
-    type: :next,
-    body: [args_add_block],
-    el: args_add_block[:el],
-    ec: args_add_block[:ec]
-  )
-end
-
-# nl is a scanner event representing a newline in the source. As you can
-# imagine, it will typically get triggered quite a few times. We don't need to
-# track this event in the AST that we're generating, so we're not going to
-# define an explicit handler for it.
-#
-#     def on_nl(value)
-#       value
-#     end
-
-# nokw_param is a parser event that represents the use of the special 2.7+
-# syntax to indicate a method should take no additional keyword arguments. For
-# example in the following snippet:
-#
-#     def foo(**nil) end
-#
-# this is saying that foo should not accept any keyword arguments. Its value
-# is always nil. We don't need to track this event in the AST that we're
-# generating, so we're not going to define an explicit handler for it.
-#
-#     def on_nokw_param(value)
-#       value
-#     end
-
-# op is a scanner event representing an operator literal in the source. For
-# example, in the following snippet:
-#
-#     1 + 2
-#
-# the + sign is an operator.
-def on_op(value)
-  start_line = lineno
-  start_char = char_pos
-
-  node = {
-    type: :@op,
-    body: value,
-    sl: start_line,
-    el: start_line,
-    sc: start_char,
-    ec: start_char + value.size
-  }
-
-  scanner_events << node
-  node
-end
-
-# opassign is a parser event that represents assigning something to a
-# variable or constant using an operator like += or ||=. It accepts as
-# arguments the left side of the expression before the operator, the
-# operator itself, and the right side of the expression.
-def on_opassign(left, oper, right)
-  left.merge(
-    type: :opassign,
-    body: [left, oper, right],
-    el: right[:el],
-    ec: right[:ec]
-  )
-end
-
-# operator_ambiguous is a parser event that represents when the parsers sees
-# an operator as ambiguous. For example, in the following snippet:
-#
-#     foo %[]
-#
-# the question becomes if the percent sign is being used as a method call or
-# if it's the start of a string literal. We don't need to track this event in
-# the AST that we're generating, so we're not going to define an explicit
-# handler for it.
-#
-#     def on_operator_ambiguous(value)
-#       value
-#     end
-
-# params is a parser event that represents defining parameters on a
-# method. They have a somewhat interesting structure in that they are an
-# array of arrays where the position in the top-level array indicates the
-# type of param and the subarray is the list of parameters of that type.
-# We therefore have to flatten them down to get to the location.
-def on_params(*types)
-  flattened = types.flatten(2).select { |type| type.is_a?(Hash) }
-  location =
-    if flattened.any?
-      {
-        sl: flattened[0][:sl],
-        sc: flattened[0][:sc],
-        el: flattened[-1][:el],
-        ec: flattened[-1][:ec]
-      }
-    else
-      { sl: lineno, sc: char_pos, el: lineno, ec: char_pos }
-    end
-
-  location.merge!(type: :params, body: types)
-end
 
 # A paren is a parser event that represents using parentheses pretty much
 # anywhere in a Ruby program. It accepts as arguments the contents, which
