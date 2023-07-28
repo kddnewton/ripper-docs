@@ -21,7 +21,7 @@ In order to keep the number of parameters fixed for each event, Ripper often cre
     [:@int, "5", [1, 13]]]]]]
 ```
 
-Notice that [args_new](events#args_new) has no additional parameters, and the other array elements are added one at a time using [args_add](#events#args_add).
+Notice that [args_new](events#args_new) has no additional parameters, and the other array elements are added one at a time using [args_add](events#args_add).
 
 Other events, such as [qsymbols_new](events#qsymbols_new)/[qsymbols_add](events#qsymbols_add) work very much like [args_new](events#args_new)/[args_add](event#args_add). Here's what [qsymbols_new](events#qsymbols_new)/[qsymbols_add](events#qsymbols_add) looks like in `Ripper::SexpBuilder`:
 

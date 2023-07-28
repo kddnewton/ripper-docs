@@ -1119,7 +1119,7 @@ for value in list do
 end
 ```
 
-The handler for this event accepts three parameters. The first represents the list of iteration parameters. It can be an [mlhs](#mlhs), an [mlhs_add_star](#mlhs_add_star), or a [var_field](#var_field) node, depending on the kind of iteration. The second is the Ruby expression that represents the value being iterated. The third and final parameter is a [stmts_add](#stmts_add) node that represents the list of statements inside the for loop.
+The handler for this event accepts three parameters. The first represents the list of iteration parameters. It can be an [mlhs_add](#mlhs_add), an [mlhs_add_star](#mlhs_add_star), or a [var_field](#var_field) node, depending on the kind of iteration. The second is the Ruby expression that represents the value being iterated. The third and final parameter is a [stmts_add](#stmts_add) node that represents the list of statements inside the for loop.
 
 ```ruby
 def on_for(iterator, enumerable, stmts_add); end
@@ -1534,7 +1534,7 @@ Both sides support splats, as well as variables following them. There's also des
 first, = value
 ```
 
-In this case a would receive only the first value of the `value` enumerable. The handler for this event accepts two parameters representing the left and right side of the `=` operator. The left-hand side will be any of [mlhs](#mlhs), [mlhs_add_post](#mlhs_add_post), [mlhs_add_star](#mlhs_add_star), or [mlhs_paren](#mlhs_paren) depending on how it is declared. The right-hand side will be any Ruby expression.
+In this case a would receive only the first value of the `value` enumerable. The handler for this event accepts two parameters representing the left and right side of the `=` operator. The left-hand side will be any of [mlhs_add](#mlhs_add), [mlhs_add_post](#mlhs_add_post), [mlhs_add_star](#mlhs_add_star), or [mlhs_paren](#mlhs_paren) depending on how it is declared. The right-hand side will be any Ruby expression.
 
 ```ruby
 def on_massign(left, right); end
@@ -2669,7 +2669,7 @@ unless predicate
 end
 ```
 
-The handler for this event accepts three parameters. The first is the predicate to the `unless` clause which can be any Ruby expression. The second is the list of statements inside the clause (represented by a [stmts_add](stmts_add) node). The third is an optional consequent node representing the following [elsif](#elsif) or [else](#else) clause.
+The handler for this event accepts three parameters. The first is the predicate to the `unless` clause which can be any Ruby expression. The second is the list of statements inside the clause (represented by a [stmts_add](#stmts_add) node). The third is an optional consequent node representing the following [elsif](#elsif) or [else](#else) clause.
 
 ```ruby
 def on_unless(predicate, stmts_add, consequent); end
