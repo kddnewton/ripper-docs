@@ -1302,6 +1302,8 @@ DOC
 
 In the above snippet, two `ignored_sp` event would be dispatched. The first would be dispatched with two spaces and the second with four.
 
+Notice that this event is not a "native" `Ripper` event: it is produced only by `Ripper::Filter`, though the internal `Ripper` parser `Ripper::Lexer`, which generates them when handling [heredoc_dedent](#heredoc_dedent) events.
+
 ```ruby
 def on_ignored_sp(value); end
 ```
