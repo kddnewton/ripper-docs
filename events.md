@@ -489,7 +489,7 @@ end
 In all three of the above snippets, the `rescue` keyword is used to indicate that a `bodystmt` node is being passed up to the various parent nodes. The handler for this event accepts four parameters. The first is a [stmts_add](#stmts_add) node representing the first (and only required) set of statements. The second is an optional [rescue](#rescue) node. The third is an optional second set of statements that belong in the `else` clause if one is given. The fourth and final parameter is an optional [ensure](#ensure) node.
 
 ```ruby
-def on_bodystmt(stmts, rescued, ensured, elsed); end
+def on_bodystmt(stmts, rescued, elsed, ensured); end
 ```
 
 Note that it's difficult to determine the character bounds of this node since it doesn't necessarily know where it started. You can look at the first child node that you encounter, but that might be missing comments that conceptually "belong" to this node. To remedy this, if you need the chracter bounds you need to determine them in each of the parent event handlers.
@@ -2508,7 +2508,7 @@ def on_symbols_beg(value)
 
 ### `symbols_new`
 
-`symbols_new` is a parser event that represents the beginning of a symbol literal array with interplation.
+`symbols_new` is a parser event that represents the beginning of a symbol literal array with interpolation.
 
 ```ruby
 %I[one two three]
