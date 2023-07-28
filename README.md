@@ -14,8 +14,8 @@ Ripper allows you to define handlers for scanner and parser events, which can le
 
 This document contains notes on various subjects pertaining to Ripper, as well as references for all of the various events and methods that Ripper uses internally. Here is a list of the pages that you can find in this document:
 
-* [Usage](usage) will give you a general overview of how to use Ripper for your own purposes
-* [Naming](naming) will give you an idea of some of the event types that Ripper contains and how they are named
-* [Lists](lists) will help you understand how Ripper represents and parses lists of values
-* [Location](location) explains how to determine source location information inside event handlers
+* [Usage](usage.md) will give you a general overview of how to use Ripper for your own purposes
+* [Naming](naming.md) will give you an idea of some of the event types that Ripper contains and how they are named
+* [Lists](lists.md) will help you understand how Ripper represents and parses lists of values
+* [Location](location.md) explains how to determine source location information inside event handlers
 * [Events](events.md) contains a reference for every scanner and parser event that Ripper dispatches
