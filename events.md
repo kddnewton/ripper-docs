@@ -2913,7 +2913,7 @@ def on_words_new; end
 
 ### `words_sep`
 
-`words_sep` is a scanner event that represents the separation between two words inside of a word literal array. It contains any amount of whitespace characters that are used to delimit the words. For example,
+`words_sep` is a scanner event that represents the separation between two words inside of a word literal array, or before/after the first/last word, if any. It contains any amount of whitespace characters that are used to delimit the words. For example,
 
 ```ruby
 %w[
@@ -2923,7 +2923,13 @@ def on_words_new; end
 ]
 ```
 
-In the snippet above there would be two `words_sep` events dispatched, one between `one` and `two` and one between `two` and `three`. The handler for this event accepts a single string parameter that contains the separation between the two consecutive elements in the array.
+In the snippet above there would be four `words_sep` events dispatched:
+- between `%w[` and `one`
+- between `one` and `two`
+- between `two` and `three`
+- between `three` and `]`
+
+The handler for this event accepts a single string parameter that contains the separation between the two consecutive elements in the array.
 
 ```ruby
 def on_words_sep(value); end
