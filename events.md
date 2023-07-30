@@ -1694,20 +1694,6 @@ In the example above, one `mrhs_add` event would be dispatched for the identifie
 def on_mrhs_add(mrhs_new_from_args, part); end
 ```
 
-### `mrhs_new`
-
-`mrhs_new` is a parser event that represents the assignment of a splat to a value. It will be followed by an [mrhs_add_star](#mrhs_add_star) node.
-
-```ruby
-values = *argument
-```
-
-In the example above, an `mrhs_new` event would be dispatched when the parser hits `*argument`. The next call will be a [mrhs_add_star](#mrhs_add_star) for `argument`. The handler for this event accepts no parameters as it represents the beginning of a list.
-
-```ruby
-def on_mrhs_new; end
-```
-
 ### `mrhs_add_star`
 
 `mrhs_add_star` is a parser event that represents using the splat operator to expand out the value of the last argument on the right hand side of a multiple assignment.
@@ -1720,6 +1706,20 @@ The handler for this event accepts two parameters. The first is either an [mrhs_
 
 ```ruby
 def on_mrhs_add_star(mrhs, part); end
+```
+
+### `mrhs_new`
+
+`mrhs_new` is a parser event that represents the assignment of a splat to a value. It will be followed by an [mrhs_add_star](#mrhs_add_star) node.
+
+```ruby
+values = *argument
+```
+
+In the example above, an `mrhs_new` event would be dispatched when the parser hits `*argument`. The next call will be a [mrhs_add_star](#mrhs_add_star) for `argument`. The handler for this event accepts no parameters as it represents the beginning of a list.
+
+```ruby
+def on_mrhs_new; end
 ```
 
 ### `mrhs_new_from_args`
