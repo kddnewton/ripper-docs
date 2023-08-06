@@ -25,7 +25,7 @@ def on_BEGIN(stmts_add); end
 
 ### `CHAR`
 
-`CHAR` is a parser event that represents a single codepoint in the script encoding. For example:
+`CHAR` is a scanner event that represents a single codepoint in the script encoding. For example:
 
 ```ruby
 ?a
