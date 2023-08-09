@@ -2179,10 +2179,10 @@ def on_rescue(exceptions, variable, stmts_add, consequent); end
 expression rescue value
 ```
 
-The handler for this event accepts one parameter for the statement that is being rescued and one parameter for the value that should be used if an exception is raised. Both can be any Ruby expression.
+The handler for this event accepts one parameter for the expression that is being rescued and one parameter for the value that should be used if an exception is raised. Both can be any Ruby expression.
 
 ```ruby
-def on_rescue_mod(statement, rescued); end
+def on_rescue_mod(expression, rescue_value); end
 ```
 
 ### `rest_param`
