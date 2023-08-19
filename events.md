@@ -2483,7 +2483,7 @@ def on_symbol(contents); end
 
 ### `symbol_literal`
 
-`symbol_literal` is a parser event that represents a symbol in the system with no interpolation (as opposed to a [dyna_symbol](#dyna_symbol)).
+`symbol_literal` is a parser event that represents a symbol not using quotes (as opposed to a [dyna_symbol](#dyna_symbol)).
 
 ```ruby
 :symbol
