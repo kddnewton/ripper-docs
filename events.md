@@ -876,19 +876,20 @@ def on_dot3(left, right); end
 
 ### `dyna_symbol`
 
-`dyna_symbol` is a parser event that represents a symbol literal that uses quotes to interpolate its value. For example, if you had a variable `variable` and you wanted a symbol that contained its value, you would write:
+`dyna_symbol` is a parser event that represents a symbol literal that uses quotes, be them double quotes (with interpolation) or single quotes (without interpolation). When not using quotes, the event is a [symbol_literal](#symbol_literal) instead. For example:
 
 ```ruby
-:"#{variable}"
+:'some-string'
+:"some-#{variable}"
 ```
 
-They can also be used as a special kind of dynamic hash key, as in:
+They will also be used as a special kind of dynamic hash key, as in:
 
 ```ruby
-{ "#{key}": value }
+{ "#{key}": value, 'other-key': other_value }
 ```
 
-The handler for this event accepts one parameter which is either a [string_content](#string_content) node (representing an empty string, as in `:""`) or a [string_add](#string_add) node (representing a non-empty string, as in the first example).
+The handler for this event accepts one parameter which is either a [string_content](#string_content) node (representing an empty string, as in `:""` or `:''`) or a [string_add](#string_add) node (representing a non-empty string, as in the examples).
 
 ```ruby
 def on_dyna_symbol(contents); end
