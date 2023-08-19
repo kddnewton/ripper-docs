@@ -1584,6 +1584,11 @@ The handler for this event accepts two parameters, the method being called and t
 * [method_add_arg](#method_add_arg) if there are arguments in parentheses (`method(value) {}`)
 * [command](#command) if there is no explicit receiver, it's a [do_block](#do_block) for the block, and there are arguments (`method value do end`)
 * [command_call](#command_call) if there is an explicit receiver, it's a [do_block](#do_block) for the block, and there are arguments (`object.method value do end`)
+* [super](#super) or [zsuper](#zsuper) in case the super method accepts a block (`super(args) {}` or `super do ... end`)
+* [break](#break), [next](#next), [return](#return) in case of convoluted statements like:
+  ```ruby
+  break obj.method :value do |x| x end
+  ```
 
 The second parameter will always be a [brace_block](#brace_block) or a [do_block](#do_block) node.
 
