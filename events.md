@@ -767,13 +767,13 @@ def on_cvar(value); end
 
 ### `def`
 
-`def` is a parser event that represents defining a regular method on the current self object. It accepts as arguments an identifier naming the method being defined, a [params](#params) node (the parameter declaration for the method), and a [bodystmt](#bodystmt) node which represents the statements inside the method. As an example, here are the parts that go into this:
+`def` is a parser event that represents defining a regular method on the current self object. It accepts as arguments an identifier naming the method being defined, a [params](#params) or [paren](#paren) node (the parameter declaration for the method), and a [bodystmt](#bodystmt) node which represents the statements inside the method. As an example, here are the parts that go into this:
 
 ```ruby
 def method(param) do result end
 ```
 
-In this case `method` would be the [ident](#ident), `param` would be inside the [params](#params) node, and [bodystmt](#bodystmt) would contain the single `result` statement.
+In this case `method` would be the [ident](#ident), `param` would be inside a [params](#params) node, itself in a [paren](#paren) node, and [bodystmt](#bodystmt) would contain the single `result` statement.
 
 You can also have single-line methods since Ruby 3.0+, which have slightly different syntax but still flow through this event handler. Those look like:
 
@@ -781,9 +781,9 @@ You can also have single-line methods since Ruby 3.0+, which have slightly diffe
 def method = result
 ```
 
-In this case `method` would be the [ident](#ident), the [params](#params) node would be `nil` since this single-line method doesn't declare any parameters, and the final parameter would just be a [vcall](#vcall) for the `result` method.
+In this case `method` would be the [ident](#ident), the [params](#params) node would contain only `nil` values since this single-line method doesn't declare any parameters, and the final parameter would be a [bodystmt](#bodystmt) containing the [vcall](#vcall) for `result`.
 
-The handler for this event accepts the identifier (either [ident](#ident), [const](#const), [op](#op) or [kw](#kw)) and optional [params](#params) nodes (note that this will be a [paren](#paren) node containing the [params](#params) node if parentheses are used in the declaration). It also accepts the statements, which can either be a [bodystmt](#bodystmt) node in the case of a multi-line method declaration or any Ruby expression in the case of a single-line statement.
+The handler for this event accepts the identifier (either [ident](#ident), [const](#const), [op](#op) or [kw](#kw)), a [params](#params) node (or a [paren](#paren) node containing the [params](#params) node if parentheses are used in the declaration), and finally a [bodystmt](#bodystmt) node.
 
 ```ruby
 def on_def(ident, params, body); end
