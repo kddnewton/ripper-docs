@@ -398,11 +398,15 @@ def on_bare_assoc_hash(assocs); end
 
 ### `begin`
 
-`begin` is a parser event that represents the beginning of a `begin`..`end` chain.
+`begin` is a parser event that represents the beginning of a `begin`..`end` chain. If may also happen as the result of using the "pin" operator `^` in the pattern of an [in](#in) statement.
 
 ```ruby
 begin
   value
+end
+case value
+  in ^(/a/)
+  in {released_at: ^(Time.new(2010)..Time.new(2020))}
 end
 ```
 
