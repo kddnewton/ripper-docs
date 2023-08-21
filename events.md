@@ -2684,17 +2684,17 @@ def on_undef(methods); end
 
 ### `unless`
 
-`unless` is a parser event that represents the first clause in an `unless` chain.
+`unless` is a parser event that represents an `unless` statement.
 
 ```ruby
 unless predicate
 end
 ```
 
-The handler for this event accepts three parameters. The first is the predicate to the `unless` clause which can be any Ruby expression. The second is the list of statements inside the clause (represented by a [stmts_add](#stmts_add) node). The third is an optional consequent node representing the following [elsif](#elsif) or [else](#else) clause.
+The handler for this event accepts three parameters. The first is the predicate to the `unless` clause which can be any Ruby expression. The second is the list of statements under `unless` (a [stmts_add](#stmts_add) node), executed when the predicate has a false value. The third is an optional [else](#else) node, executed if the predicate has a true value.
 
 ```ruby
-def on_unless(predicate, stmts_add, consequent); end
+def on_unless(predicate, stmts_add, if_true); end
 ```
 
 ### `unless_mod`
