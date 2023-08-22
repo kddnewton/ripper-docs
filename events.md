@@ -410,10 +410,10 @@ case value
 end
 ```
 
-The handler for this event accepts a single [bodystmt](#bodystmt) event that has all of the potential clauses (`rescue`/`else`/`ensure`).
+The handler for this event accepts a single event. In the case of a `begin`..`end` chain, it is a [bodystmt](#bodystmt) that has all of the potential clauses (`rescue`/`else`/`ensure`). When pinning, it is the pinned expression.
 
 ```ruby
-def on_begin(bodystmt); end
+def on_begin(body_or_pinned); end
 ```
 
 ### `binary`
