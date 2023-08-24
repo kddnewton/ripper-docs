@@ -2766,7 +2766,23 @@ def on_var_alias(left, right); end
 variable = value
 ```
 
-In the example above, the `var_field` event represents the `variable` token. The handler for this event accepts a single [ident](#ident) node that represents the name of the variable being assigned to.
+In the example above, the `var_field` event represents the `variable` token. The handler for this event accepts a single node that represents the name of the variable being assigned to. If can be
+an [ident](#ident), [const](#const), [cvar](#cvar), [gvar](#gvar) or [ivar](#ivar).
+
+`var_field` may also happen in pattern matching:
+
+- with the argument `nil` as the `splatarg` argument of an [aryptn](#aryptn), representing an empty splat:
+  ```ruby
+  in 0,;
+  in *;
+  in *, 1, 2
+  ```
+
+- with the argument `:nil` as the `kwrest` argument of an [hshptn](#hshptn), representing the construct `**nil`:
+  ```ruby
+  in a:, **nil
+  in **nil
+  ```
 
 ```ruby
 def on_var_field(ident); end
