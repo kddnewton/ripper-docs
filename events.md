@@ -2788,8 +2788,6 @@ an [ident](#ident), [const](#const), [cvar](#cvar), [gvar](#gvar) or [ivar](#iva
 def on_var_field(ident); end
 ```
 
-Note that there are a few cases where the ident can be omitted, as in the case that you're using a single splat operator without a name.
-
 ### `var_ref`
 
 `var_ref` is a parser event that represents a variable reference.
