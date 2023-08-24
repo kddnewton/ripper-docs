@@ -1894,7 +1894,7 @@ def on_params(req, opts, rest, post, keys, keyrest, block); end
 (1 + 2)
 ```
 
-The handler for this event accepts a single parameter that represents the expression inside the parentheses.
+The handler for this event accepts a single parameter that represents the expression inside the parentheses. It is equal to `false` if there is no expression, as in `()`.
 
 ```ruby
 def on_paren(contents); end
