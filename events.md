@@ -1653,9 +1653,10 @@ def on_mlhs_add_post(mlhs_add_star, mlhs_add); end
 
 ```ruby
 first, *rest = values
+first, * = values
 ```
 
-The handler for this event accepts two parameters. The first is the result of the first call to either [mlhs_new](#mlhs_new) (if the splatted variable is the first in the list) or [mlhs_add](#mlhs_add) (if the splatted variable is not the first in the list). The second is the node that represents the value being splatted, which can be many different nodes (usually a field node, but it depends on the expression type).
+The handler for this event accepts two parameters. The first is the result of the first call to either [mlhs_new](#mlhs_new) (if the splatted variable is the first in the list) or [mlhs_add](#mlhs_add) (if the splatted variable is not the first in the list). The second is the node that represents the value being splatted, which can be many different nodes (usually a field node, but it depends on the expression type); it is `nil` for an anonymous splat, as in the second example above.
 
 ```ruby
 def on_mlhs_add_star(mlhs, part); end
