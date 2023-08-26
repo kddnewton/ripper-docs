@@ -22,7 +22,7 @@ irb(main):004:0> pp Ripper.sexp("a=7")
 
 Scanner events tend to include the location where the token starts as an array of two integers, such as `[1,2]` above. The first number is a 1-indexed line number (in this case line 1) and a 0-indexed character number within the line (for `[1,2]`, 2 means the third character of that line.)
 
-Ripper works in an evented style internally. To use it that way, you'll usually want to inherit from the `Ripper` parent class, define some event handlers, and parse your code. Here's a very simple example using the [heredoc_beg](events.md#heredoc_beg) scanner event:
+Ripper works in an evented style internally. To use it that way, you'll usually want to inherit from the `Ripper` parent class, define some event handlers, and parse your code. Here's a very simple example using the [heredoc_beg](events#heredoc_beg) scanner event:
 
 ```ruby
 require "ripper"

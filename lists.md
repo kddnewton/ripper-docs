@@ -21,9 +21,9 @@ In order to keep the number of parameters fixed for each event, Ripper often cre
     [:@int, "5", [1, 13]]]]]]
 ```
 
-Notice that [args_new](events.md#args_new) has no additional parameters, and the other array elements are added one at a time using [args_add](events.md#args_add).
+Notice that [args_new](events#args_new) has no additional parameters, and the other array elements are added one at a time using [args_add](events#args_add).
 
-Other events, such as [qsymbols_new](events.md#qsymbols_new)/[qsymbols_add](events.md#qsymbols_add) work very much like [args_new](events.md#args_new)/[args_add](events.md#args_add). Here's what [qsymbols_new](events.md#qsymbols_new)/[qsymbols_add](events.md#qsymbols_add) looks like in `Ripper::SexpBuilder`:
+Other events, such as [qsymbols_new](events#qsymbols_new)/[qsymbols_add](events#qsymbols_add) work very much like [args_new](events#args_new)/[args_add](events#args_add). Here's what [qsymbols_new](events#qsymbols_new)/[qsymbols_add](events#qsymbols_add) looks like in `Ripper::SexpBuilder`:
 
 ```ruby
 2.7.1 :001 > pp Ripper.sexp_raw("%i[one two three]")
@@ -38,7 +38,7 @@ Other events, such as [qsymbols_new](events.md#qsymbols_new)/[qsymbols_add](even
     [:@tstring_content, "three", [1, 11]]]]]]
 ```
 
-One of the differences between the `Ripper::SexpBuilder` and `Ripper::SexpBuilderPP` classes is that it replaces `*_new`/`*_add` chains with a Ruby array, such as [stmts_new](events.md#stmts_new)/[stmts_add](events.md#stmts_add) being replaced here:
+One of the differences between the `Ripper::SexpBuilder` and `Ripper::SexpBuilderPP` classes is that it replaces `*_new`/`*_add` chains with a Ruby array, such as [stmts_new](events#stmts_new)/[stmts_add](events#stmts_add) being replaced here:
 
 ```ruby
 2.7.1 :001 > pp Ripper.sexp("[1, 2, 3, 4, 5]")
@@ -55,15 +55,15 @@ The accomplish this same behavior in your own Ripper parser, you can duplicate t
 
 The convention to use `*_new`/`*_add` events to build lists is used in many places in the Ripper parser. The complete list is given below:
 
-* [args_new](events.md#args_new)/[args_add](events.md#args_add)/[args_add_block](events.md#args_add_block)/[args_add_star](events.md#args_add_star)/[args_forward](events.md#args_forward) - argument lists
-* [mlhs_new](events.md#mlhs_new)/[mlhs_add](events.md#mlhs_add) - left-hand side of a multiple assignment list
-* [mrhs_new](events.md#mrhs_new)/[mrhs_add](events.md#mrhs_add) - right-hand side of a multiple assignment list
-* [qsymbols_new](events.md#qsymbols_new)/[qsymbols_add](events.md#qsymbols_add) - `%i` array literal parts
-* [qwords_new](events.md#qwords_new)/[qwords_add](events.md#qwords_add) - `%w` array literal parts
-* [regexp_new](events.md#regexp_new)/[regexp_add](events.md#regexp_add) - regular expression literal parts
-* [stmts_new](events.md#stmts_new)/[stmts_add](events.md#stmts_add) - statement lists
-* [string_content](events.md#string_content)/[string_add](events.md#string_add) - string literal parts
-* [symbols_new](events.md#symbols_new)/[symbols_add](events.md#symbols_add) - `%I` array literal parts
-* [word_new](events.md#word_new)/[word_add](events.md#word_add) - word parts within a `%W` array literal
-* [words_new](events.md#words_new)/[words_add](events.md#words_add) - `%W` array literal parts
-* [xstring_new](events.md#xstring_new)/[xstring_add](events.md#xstring_add) - `%x` command string literal parts
+* [args_new](events#args_new)/[args_add](events#args_add)/[args_add_block](events#args_add_block)/[args_add_star](events#args_add_star)/[args_forward](events#args_forward) - argument lists
+* [mlhs_new](events#mlhs_new)/[mlhs_add](events#mlhs_add) - left-hand side of a multiple assignment list
+* [mrhs_new](events#mrhs_new)/[mrhs_add](events#mrhs_add) - right-hand side of a multiple assignment list
+* [qsymbols_new](events#qsymbols_new)/[qsymbols_add](events#qsymbols_add) - `%i` array literal parts
+* [qwords_new](events#qwords_new)/[qwords_add](events#qwords_add) - `%w` array literal parts
+* [regexp_new](events#regexp_new)/[regexp_add](events#regexp_add) - regular expression literal parts
+* [stmts_new](events#stmts_new)/[stmts_add](events#stmts_add) - statement lists
+* [string_content](events#string_content)/[string_add](events#string_add) - string literal parts
+* [symbols_new](events#symbols_new)/[symbols_add](events#symbols_add) - `%I` array literal parts
+* [word_new](events#word_new)/[word_add](events#word_add) - word parts within a `%W` array literal
+* [words_new](events#words_new)/[words_add](events#words_add) - `%W` array literal parts
+* [xstring_new](events#xstring_new)/[xstring_add](events#xstring_add) - `%x` command string literal parts
