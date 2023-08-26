@@ -25,7 +25,7 @@ def on_BEGIN(stmts_add); end
 
 ### `CHAR`
 
-`CHAR` is a parser event that represents a single codepoint in the script encoding. For example:
+`CHAR` is a scanner event that represents a single codepoint in the script encoding. For example:
 
 ```ruby
 ?a
@@ -398,18 +398,22 @@ def on_bare_assoc_hash(assocs); end
 
 ### `begin`
 
-`begin` is a parser event that represents the beginning of a `begin`..`end` chain.
+`begin` is a parser event that represents the beginning of a `begin`..`end` chain. If may also happen as the result of using the "pin" operator `^` in the pattern of an [in](#in) statement.
 
 ```ruby
 begin
   value
 end
+case value
+  in ^(/a/)
+  in {released_at: ^(Time.new(2010)..Time.new(2020))}
+end
 ```
 
-The handler for this event accepts a single [bodystmt](#bodystmt) event that has all of the potential clauses (`rescue`/`else`/`ensure`).
+The handler for this event accepts a single event. In the case of a `begin`..`end` chain, it is a [bodystmt](#bodystmt) that has all of the potential clauses (`rescue`/`else`/`ensure`). When pinning, it is the pinned expression.
 
 ```ruby
-def on_begin(bodystmt); end
+def on_begin(body_or_pinned); end
 ```
 
 ### `binary`
@@ -489,7 +493,7 @@ end
 In all three of the above snippets, the `rescue` keyword is used to indicate that a `bodystmt` node is being passed up to the various parent nodes. The handler for this event accepts four parameters. The first is a [stmts_add](#stmts_add) node representing the first (and only required) set of statements. The second is an optional [rescue](#rescue) node. The third is an optional second set of statements that belong in the `else` clause if one is given. The fourth and final parameter is an optional [ensure](#ensure) node.
 
 ```ruby
-def on_bodystmt(stmts, rescued, ensured, elsed); end
+def on_bodystmt(stmts, rescued, elsed, ensured); end
 ```
 
 Note that it's difficult to determine the character bounds of this node since it doesn't necessarily know where it started. You can look at the first child node that you encounter, but that might be missing comments that conceptually "belong" to this node. To remedy this, if you need the chracter bounds you need to determine them in each of the parent event handlers.
@@ -538,7 +542,7 @@ There is one esoteric syntax that comes into play here as well. If the last para
 callable.(1, 2, 3)
 ```
 
-The handler for this event accepts as parameters the receiver of the message (which can be another nested `call` as well), the operator being used to send the message (this can be an [op](#op) node containing `.` or `&.`, or the symbol literal `:"::"`), and the message that is being sent to the receiver. The message will usually be an [ident](#ident) node, but can also be a [backtick](#backtick), [op](#op), or [const](#const) node, depending on the look of the message. It can also be the already mentioned `:call` symbol literal.
+The handler for this event accepts as parameters the receiver of the message (which can be another nested `call` as well), the operator being used to send the message (this can be an [op](#op) node containing `.` or `&.`, or the symbol literal `:"::"` due to [a bug](https://bugs.ruby-lang.org/issues/19788)), and the message that is being sent to the receiver. The message will usually be an [ident](#ident) node, but can also be a [backtick](#backtick), [op](#op), or [const](#const) node, depending on the look of the message. It can also be the already mentioned `:call` symbol literal.
 
 ```ruby
 def on_call(receiver, operator, message); end
@@ -767,13 +771,13 @@ def on_cvar(value); end
 
 ### `def`
 
-`def` is a parser event that represents defining a regular method on the current self object. It accepts as arguments an identifier naming the method being defined, a [params](#params) node (the parameter declaration for the method), and a [bodystmt](#bodystmt) node which represents the statements inside the method. As an example, here are the parts that go into this:
+`def` is a parser event that represents defining a regular method on the current self object. It accepts as arguments an identifier naming the method being defined, a [params](#params) or [paren](#paren) node (the parameter declaration for the method), and a [bodystmt](#bodystmt) node which represents the statements inside the method. As an example, here are the parts that go into this:
 
 ```ruby
 def method(param) do result end
 ```
 
-In this case `method` would be the [ident](#ident), `param` would be inside the [params](#params) node, and [bodystmt](#bodystmt) would contain the single `result` statement.
+In this case `method` would be the [ident](#ident), `param` would be inside a [params](#params) node, itself in a [paren](#paren) node, and [bodystmt](#bodystmt) would contain the single `result` statement.
 
 You can also have single-line methods since Ruby 3.0+, which have slightly different syntax but still flow through this event handler. Those look like:
 
@@ -781,9 +785,9 @@ You can also have single-line methods since Ruby 3.0+, which have slightly diffe
 def method = result
 ```
 
-In this case `method` would be the [ident](#ident), the [params](#params) node would be `nil` since this single-line method doesn't declare any parameters, and the final parameter would just be a [vcall](#vcall) for the `result` method.
+In this case `method` would be the [ident](#ident), the [params](#params) node would contain only `nil` values since this single-line method doesn't declare any parameters, and the final parameter would be a [bodystmt](#bodystmt) containing the [vcall](#vcall) for `result`.
 
-The handler for this event accepts the identifier (either [ident](#ident), [const](#const), [op](#op) or [kw](#kw)) and optional [params](#params) nodes (note that this will be a [paren](#paren) node containing the [params](#params) node if parentheses are used in the declaration). It also accepts the statements, which can either be a [bodystmt](#bodystmt) node in the case of a multi-line method declaration or any Ruby expression in the case of a single-line statement.
+The handler for this event accepts the identifier (either [ident](#ident), [const](#const), [op](#op) or [kw](#kw)), a [params](#params) node (or a [paren](#paren) node containing the [params](#params) node if parentheses are used in the declaration), and finally a [bodystmt](#bodystmt) node.
 
 ```ruby
 def on_def(ident, params, body); end
@@ -876,19 +880,20 @@ def on_dot3(left, right); end
 
 ### `dyna_symbol`
 
-`dyna_symbol` is a parser event that represents a symbol literal that uses quotes to interpolate its value. For example, if you had a variable `variable` and you wanted a symbol that contained its value, you would write:
+`dyna_symbol` is a parser event that represents a symbol literal that uses quotes, be them double quotes (with interpolation) or single quotes (without interpolation). When not using quotes, the event is a [symbol_literal](#symbol_literal) instead. For example:
 
 ```ruby
-:"#{variable}"
+:'some-string'
+:"some-#{variable}"
 ```
 
-They can also be used as a special kind of dynamic hash key, as in:
+They will also be used as a special kind of dynamic hash key, as in:
 
 ```ruby
-{ "#{key}": value }
+{ "#{key}": value, 'other-key': other_value }
 ```
 
-The handler for this event accepts one parameter which is either a [string_content](#string_content) node (representing an empty string, as in `:""`) or a [string_add](#string_add) node (representing a non-empty string, as in the first example).
+The handler for this event accepts one parameter which is either a [string_content](#string_content) node (representing an empty string, as in `:""` or `:''`) or a [string_add](#string_add) node (representing a non-empty string, as in the examples).
 
 ```ruby
 def on_dyna_symbol(contents); end
@@ -1119,7 +1124,7 @@ for value in list do
 end
 ```
 
-The handler for this event accepts three parameters. The first represents the list of iteration parameters. It can be an [mlhs](#mlhs), an [mlhs_add_star](#mlhs_add_star), or a [var_field](#var_field) node, depending on the kind of iteration. The second is the Ruby expression that represents the value being iterated. The third and final parameter is a [stmts_add](#stmts_add) node that represents the list of statements inside the for loop.
+The handler for this event accepts three parameters. The first represents the list of iteration parameters. It can be an [mlhs_add](#mlhs_add), an [mlhs_add_star](#mlhs_add_star), or a [var_field](#var_field) node, depending on the kind of iteration. The second is the Ruby expression that represents the value being iterated. The third and final parameter is a [stmts_add](#stmts_add) node that represents the list of statements inside the for loop.
 
 ```ruby
 def on_for(iterator, enumerable, stmts_add); end
@@ -1301,6 +1306,8 @@ DOC
 ```
 
 In the above snippet, two `ignored_sp` event would be dispatched. The first would be dispatched with two spaces and the second with four.
+
+Notice that this event is not a "native" `Ripper` event: it is produced only by `Ripper::Filter`, though the internal `Ripper` parser `Ripper::Lexer`, which generates them when handling [heredoc_dedent](#heredoc_dedent) events.
 
 ```ruby
 def on_ignored_sp(value); end
@@ -1532,7 +1539,7 @@ Both sides support splats, as well as variables following them. There's also des
 first, = value
 ```
 
-In this case a would receive only the first value of the `value` enumerable. The handler for this event accepts two parameters representing the left and right side of the `=` operator. The left-hand side will be any of [mlhs](#mlhs), [mlhs_add_post](#mlhs_add_post), [mlhs_add_star](#mlhs_add_star), or [mlhs_paren](#mlhs_paren) depending on how it is declared. The right-hand side will be any Ruby expression.
+In this case a would receive only the first value of the `value` enumerable. The handler for this event accepts two parameters representing the left and right side of the `=` operator. The left-hand side will be any of [mlhs_add](#mlhs_add), [mlhs_add_post](#mlhs_add_post), [mlhs_add_star](#mlhs_add_star), or [mlhs_paren](#mlhs_paren) depending on how it is declared. The right-hand side will be any Ruby expression.
 
 ```ruby
 def on_massign(left, right); end
@@ -1581,6 +1588,11 @@ The handler for this event accepts two parameters, the method being called and t
 * [method_add_arg](#method_add_arg) if there are arguments in parentheses (`method(value) {}`)
 * [command](#command) if there is no explicit receiver, it's a [do_block](#do_block) for the block, and there are arguments (`method value do end`)
 * [command_call](#command_call) if there is an explicit receiver, it's a [do_block](#do_block) for the block, and there are arguments (`object.method value do end`)
+* [super](#super) or [zsuper](#zsuper) in case the super method accepts a block (`super(args) {}` or `super do ... end`)
+* [break](#break), [next](#next), [return](#return) in case of convoluted statements like:
+  ```ruby
+  break obj.method :value do |x| x end
+  ```
 
 The second parameter will always be a [brace_block](#brace_block) or a [do_block](#do_block) node.
 
@@ -1641,9 +1653,10 @@ def on_mlhs_add_post(mlhs_add_star, mlhs_add); end
 
 ```ruby
 first, *rest = values
+first, * = values
 ```
 
-The handler for this event accepts two parameters. The first is the result of the first call to either [mlhs_new](#mlhs_new) (if the splatted variable is the first in the list) or [mlhs_add](#mlhs_add) (if the splatted variable is not the first in the list). The second is the node that represents the value being splatted, which can be many different nodes (usually a field node, but it depends on the expression type).
+The handler for this event accepts two parameters. The first is the result of the first call to either [mlhs_new](#mlhs_new) (if the splatted variable is the first in the list) or [mlhs_add](#mlhs_add) (if the splatted variable is not the first in the list). The second is the node that represents the value being splatted, which can be many different nodes (usually a field node, but it depends on the expression type); it is `nil` for an anonymous splat, as in the second example above.
 
 ```ruby
 def on_mlhs_add_star(mlhs, part); end
@@ -1680,35 +1693,21 @@ def on_module(const, bodystmt); end
 
 ### `mrhs_add`
 
-`mrhs_add` is a parser event that represents adding another value onto a list on the right hand side of a multiple assignment.
+`mrhs_add` is a parser event that represents adding a last, non-splat value onto a list on the right hand side of a multiple assignment, after an [mrhs_new_from_args](#mrhs_new_from_args).
 
 ```ruby
 values = first, second, third
 ```
 
-In the example above, three `mrhs_add` events would be dispatched, one for each identifier in the list. The handler for this event accepts the result of the handler for [mrhs_new](#mrhs_new) (if it's the first element in the list) or `mrhs_add` if it's not, as well as the part that is being added which can be any Ruby expression.
+In the example above, one `mrhs_add` event would be dispatched for the identifier `third`. The handler for this event accepts the result of the handler for [mrhs_new_from_args](#mrhs_new_from_args), as well as the part that is being added which can be any Ruby expression.
 
 ```ruby
-def on_mrhs_add(mrhs, part); end
-```
-
-### `mrhs_new`
-
-`mrhs_new` is a parser event that represents the beginning of a list of values that are being assigned within a multiple assignment node. It can be followed by any number of [mrhs_add](#mrhs_add) nodes.
-
-```ruby
-values = first, second, third
-```
-
-In the example above, an `mrhs_new` event would be dispatched when the parser hits the `first` identifier. The handler for this event accepts no parameters as it represents the beginning of a list.
-
-```ruby
-def on_mrhs_new; end
+def on_mrhs_add(mrhs_new_from_args, part); end
 ```
 
 ### `mrhs_add_star`
 
-`mrhs_add_star` is a parser event that represents using the splat operator to expand out a value on the right hand side of a multiple assignment.
+`mrhs_add_star` is a parser event that represents using the splat operator to expand out the value of the last argument on the right hand side of a multiple assignment.
 
 ```ruby
 values = first, *rest
@@ -1720,6 +1719,20 @@ The handler for this event accepts two parameters. The first is either an [mrhs_
 def on_mrhs_add_star(mrhs, part); end
 ```
 
+### `mrhs_new`
+
+`mrhs_new` is a parser event that represents the assignment of a splat to a value. It will be followed by an [mrhs_add_star](#mrhs_add_star) node.
+
+```ruby
+values = *argument
+```
+
+In the example above, an `mrhs_new` event would be dispatched when the parser hits `*argument`. The next call will be a [mrhs_add_star](#mrhs_add_star) for `argument`. The handler for this event accepts no parameters as it represents the beginning of a list.
+
+```ruby
+def on_mrhs_new; end
+```
+
 ### `mrhs_new_from_args`
 
 `mrhs_new_from_args` is a parser event that represents the shorthand of a multiple assignment that allows you to assign values using just commas as opposed to assigning from an array. For example, in the following segment the right hand side of the assignment would dispatch this event:
@@ -1728,7 +1741,23 @@ def on_mrhs_add_star(mrhs, part); end
 values = first, second, third
 ```
 
-The handler for this event accepts a single [args_add](#args_add) or [args_add_star](#args_add_star) node that represents the values being assigned.
+In the example above, the sequence of event calls will be:
+```
+mrhs_add(
+  mrhs_new_from_args(
+    args_add(
+      args_add(
+        args_new(),
+        vcall(ident("first"))
+      ),
+      vcall(ident("second"))
+    )
+  ),
+  vcall(ident("third")
+)
+```
+
+The event is therefore dispatched once, before the last right-hand side argument. The handler for this event accepts a single [args_add](#args_add) or [args_add_star](#args_add_star) node that represents the values collected before the last right-hand side argument, which will be added by the following [mrhs_add](#mrhs_add) or [mrhs_add_star](#mrhs_add_star) event.
 
 ```ruby
 def on_mrhs_new_from_args(args); end
@@ -1850,7 +1879,7 @@ In the example above a `params` event would be dispatched when the parser found 
 * Post parameters (`req`) - an array of [ident](#ident) nodes that represent the list of parameters occuring _after_ a rest parameter
 * Keyword parameters (`keyreq` and `key`) - an array of pairs containing [label](#label) nodes for the name as well as a node representing whatever expresion is used for the default value (or `false` if none is provided)
 * Keyword rest parameter (`keyrest` or `nokey`) - either a [kwrest_param](#kwrest_param) node if a double-splat operator is being used to gather up remaining keyword arguments or the symbol `:nil` if it's using the `**nil` syntax
-* Block parameter (`block`) - a [blockarg](#blockarg) node
+* Block parameter (`block`) - a [blockarg](#blockarg) node, or the symbol `:&` due to [a bug](https://bugs.ruby-lang.org/issues/19851)
 
 Note that the shorthands above come from calling the `Method#parameters` method.
 
@@ -1866,7 +1895,7 @@ def on_params(req, opts, rest, post, keys, keyrest, block); end
 (1 + 2)
 ```
 
-The handler for this event accepts a single parameter that represents the expression inside the parentheses.
+The handler for this event accepts a single parameter that represents the expression inside the parentheses. It is equal to `false` if there is no expression, as in `()`.
 
 ```ruby
 def on_paren(contents); end
@@ -2161,10 +2190,10 @@ def on_rescue(exceptions, variable, stmts_add, consequent); end
 expression rescue value
 ```
 
-The handler for this event accepts one parameter for the statement that is being rescued and one parameter for the value that should be used if an exception is raised. Both can be any Ruby expression.
+The handler for this event accepts one parameter for the expression that is being rescued and one parameter for the value that should be used if an exception is raised. Both can be any Ruby expression.
 
 ```ruby
-def on_rescue_mod(statement, rescued); end
+def on_rescue_mod(expression, rescue_value); end
 ```
 
 ### `rest_param`
@@ -2464,7 +2493,7 @@ def on_symbol(contents); end
 
 ### `symbol_literal`
 
-`symbol_literal` is a parser event that represents a symbol in the system with no interpolation (as opposed to a [dyna_symbol](#dyna_symbol)).
+`symbol_literal` is a parser event that represents a symbol not using quotes (as opposed to a [dyna_symbol](#dyna_symbol)).
 
 ```ruby
 :symbol
@@ -2508,7 +2537,7 @@ def on_symbols_beg(value)
 
 ### `symbols_new`
 
-`symbols_new` is a parser event that represents the beginning of a symbol literal array with interplation.
+`symbols_new` is a parser event that represents the beginning of a symbol literal array with interpolation.
 
 ```ruby
 %I[one two three]
@@ -2660,17 +2689,17 @@ def on_undef(methods); end
 
 ### `unless`
 
-`unless` is a parser event that represents the first clause in an `unless` chain.
+`unless` is a parser event that represents an `unless` statement.
 
 ```ruby
 unless predicate
 end
 ```
 
-The handler for this event accepts three parameters. The first is the predicate to the `unless` clause which can be any Ruby expression. The second is the list of statements inside the clause (represented by a [stmts_add](stmts_add) node). The third is an optional consequent node representing the following [elsif](#elsif) or [else](#else) clause.
+The handler for this event accepts three parameters. The first is the predicate to the `unless` clause which can be any Ruby expression. The second is the list of statements under `unless` (a [stmts_add](#stmts_add) node), executed when the predicate has a false value. The third is an optional [else](#else) node, executed if the predicate has a true value.
 
 ```ruby
-def on_unless(predicate, stmts_add, consequent); end
+def on_unless(predicate, stmts_add, if_true); end
 ```
 
 ### `unless_mod`
@@ -2738,13 +2767,27 @@ def on_var_alias(left, right); end
 variable = value
 ```
 
-In the example above, the `var_field` event represents the `variable` token. The handler for this event accepts a single [ident](#ident) node that represents the name of the variable being assigned to.
+In the example above, the `var_field` event represents the `variable` token. The handler for this event accepts a single node that represents the name of the variable being assigned to. If can be
+an [ident](#ident), [const](#const), [cvar](#cvar), [gvar](#gvar) or [ivar](#ivar).
+
+`var_field` may also happen in pattern matching:
+
+- with the argument `nil` as the `splatarg` argument of an [aryptn](#aryptn), representing an empty splat:
+  ```ruby
+  in 0,;
+  in *;
+  in *, 1, 2
+  ```
+
+- with the argument `:nil` as the `kwrest` argument of an [hshptn](#hshptn), representing the construct `**nil`:
+  ```ruby
+  in a:, **nil
+  in **nil
+  ```
 
 ```ruby
 def on_var_field(ident); end
 ```
-
-Note that there are a few cases where the ident can be omitted, as in the case that you're using a single splat operator without a name.
 
 ### `var_ref`
 
@@ -2911,7 +2954,7 @@ def on_words_new; end
 
 ### `words_sep`
 
-`words_sep` is a scanner event that represents the separation between two words inside of a word literal array. It contains any amount of whitespace characters that are used to delimit the words. For example,
+`words_sep` is a scanner event that represents the separation between two words inside of a word literal array, or before/after the first/last word, if any. It contains any amount of whitespace characters that are used to delimit the words. For example,
 
 ```ruby
 %w[
@@ -2921,7 +2964,13 @@ def on_words_new; end
 ]
 ```
 
-In the snippet above there would be two `words_sep` events dispatched, one between `one` and `two` and one between `two` and `three`. The handler for this event accepts a single string parameter that contains the separation between the two consecutive elements in the array.
+In the snippet above there would be four `words_sep` events dispatched:
+- between `%w[` and `one`
+- between `one` and `two`
+- between `two` and `three`
+- between `three` and `]`
+
+The handler for this event accepts a single string parameter that contains the separation between the two consecutive elements in the array.
 
 ```ruby
 def on_words_sep(value); end
