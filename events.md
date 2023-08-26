@@ -542,7 +542,7 @@ There is one esoteric syntax that comes into play here as well. If the last para
 callable.(1, 2, 3)
 ```
 
-The handler for this event accepts as parameters the receiver of the message (which can be another nested `call` as well), the operator being used to send the message (this can be an [op](#op) node containing `.` or `&.`, or the symbol literal `:"::"`), and the message that is being sent to the receiver. The message will usually be an [ident](#ident) node, but can also be a [backtick](#backtick), [op](#op), or [const](#const) node, depending on the look of the message. It can also be the already mentioned `:call` symbol literal.
+The handler for this event accepts as parameters the receiver of the message (which can be another nested `call` as well), the operator being used to send the message (this can be an [op](#op) node containing `.` or `&.`, or the symbol literal `:"::"` due to [a bug](https://bugs.ruby-lang.org/issues/19788)), and the message that is being sent to the receiver. The message will usually be an [ident](#ident) node, but can also be a [backtick](#backtick), [op](#op), or [const](#const) node, depending on the look of the message. It can also be the already mentioned `:call` symbol literal.
 
 ```ruby
 def on_call(receiver, operator, message); end
@@ -1878,7 +1878,7 @@ In the example above a `params` event would be dispatched when the parser found 
 * Post parameters (`req`) - an array of [ident](#ident) nodes that represent the list of parameters occuring _after_ a rest parameter
 * Keyword parameters (`keyreq` and `key`) - an array of pairs containing [label](#label) nodes for the name as well as a node representing whatever expresion is used for the default value (or `false` if none is provided)
 * Keyword rest parameter (`keyrest` or `nokey`) - either a [kwrest_param](#kwrest_param) node if a double-splat operator is being used to gather up remaining keyword arguments or the symbol `:nil` if it's using the `**nil` syntax
-* Block parameter (`block`) - a [blockarg](#blockarg) node
+* Block parameter (`block`) - a [blockarg](#blockarg) node, or the symbol `:&` due to [a bug](https://bugs.ruby-lang.org/issues/19851)
 
 Note that the shorthands above come from calling the `Method#parameters` method.
 
